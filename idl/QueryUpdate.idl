@@ -1,0 +1,29 @@
+#ifndef FI_QUERY_UPDATE_IDL_H
+#define FI_QUERY_UPDATE_IDL_H
+
+typedef sequence<octet> bfstream;
+enum e{FISHARE_MDS,FISHARE_CLIENT};
+//enum{EWINDOWS,ELINUX,EMAC};
+struct PlatformInfoEx
+{
+    long         platform; //0-windows 1-linux 2-mac
+    string       OSName;//windows 2003 windows xp,linux mac
+    string       OSPackName;//sp1 or sp2
+    long         OSMainVersion;
+    long         OSSubVersion;
+
+    long         OSRunMode;//32bit ,64bit,128bit etc.
+
+};
+interface FiUpdateMgr
+{
+    long QueryCurVersion(in string inversion,in string indate,in string inpatchno,out string version,out string date,out string patchno);// which=FISHARE_MDS or FISHARE_CLIENT
+    long StartupUpdate(in PlatformInfoEx PInfo,in long which,in string version,in string date,in string patchno,out string filename,out long size,out long long ref);
+    long TranslateFile(in long long ref, in long packid, out bfstream bfs,out long checknum,out long flag);
+    //trans any(/download) file 
+    long starupTrans(in string fileName, out long size,out long long fileRef);//1. open file 2. return size of file 3. return file handle 
+    long transFile(in long long fileRef, in long packid, out bfstream bfs,out long checknum,out long flag);
+    
+};
+
+#endif
