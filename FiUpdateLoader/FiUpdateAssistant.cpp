@@ -1071,6 +1071,7 @@ int FiUpdateAssistant::svc()
     {
         FiWriteFile(fpinstall,(void*)("pkill -9 fiwatchdog \n"),strlen("pkill -9 fiwatchdog \n"));
         FiWriteFile(fpinstall,(void*)("pkill -9 fitool \n"),strlen("pkill -9 fitool \n"));
+        FiWriteFile(fpinstall,(void*)("pkill -9 scm \n"),strlen("pkill -9 scm \n"));
         FiWriteFile(fpinstall,(void*)("pkill -9 fiioctlproxy \n"),strlen("pkill -9 fiioctlproxy \n"));
  
     }

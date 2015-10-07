@@ -43,7 +43,7 @@
 #ifndef WIN32	
 #define ut_err(fmt, args...)   printf("[update err]:%s:%d: "fmt, __FILE__, __LINE__, ##args)
 #else
-#define ut_err(...)   printf("[update err]:%s:%d: "__FILE__, __LINE__, ##__VA_ARGS__)
+#define ut_err(...)   printf("[update err]: "##__VA_ARGS__)
 #endif
 #else
 #define ut_err(...)
