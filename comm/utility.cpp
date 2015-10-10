@@ -1,5 +1,9 @@
 #include "utility.h"
-
+#ifdef WIN32
+#include "Markup_win32.h"
+#else
+#include "Markup_linux.h"
+#endif
 #ifdef WIN32
 #include<windows.h>
 #include<direct.h>
@@ -26,6 +30,188 @@
 #endif
 #pragma  warning(disable:4819)
 #pragma  warning(disable:4996)
+
+#ifndef WIN32
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+
+
+#include <sys/types.h> 
+#include <sys/param.h> 
+#include <net/if_arp.h> 
+#endif
+
+#define BUFSIZ          512            /*  */
+
+using namespace std;
+
+int getCurLocalIp(std::string& ip)
+{
+    int ret = -1;
+    int i,j;
+    vector<unsigned long> localIp;
+    vector<unsigned long> vecIpAddrXml;
+
+    getLocalIpAll(localIp);//get ip addr from `ifconfig`
+    getIPfromXml(vecIpAddrXml);
+
+    for (i = 0; i < vecIpAddrXml.size(); i++)
+    {
+        for (j = 0; j < localIp.size(); j++)
+        {
+            if (localIp[j] == vecIpAddrXml[i])
+            {
+                unsigned long tmp = localIp[j];
+                struct in_addr *test;
+                test = (struct in_addr *)&tmp;
+                ip   = inet_ntoa(*test);
+//                ip   = inet_ntoa((struct in_addr)localIp[j]);
+                ret  = 0;
+                break;
+            }
+        }
+    }
+    if (-1 == ret)
+    {
+        ip = inet_ntoa(*((struct in_addr *)&localIp[0]));//ip="0.0.0.0"?
+        ret = 0;
+    }
+    return ret;
+}
+int getIPfromXml(std::vector<unsigned long>& vecIpAddr)
+{
+    CMarkup xml;
+    char *cfgConfig = "../config/FicsConfig.xml";
+    std::string strTmp;
+    int ret = -1;
+
+    if (!xml.Load(cfgConfig)) 
+    {
+        ut_err("load ficsconfig xml[%s] failed\n", cfgConfig);
+        return ret;
+    }    
+
+    /*-----------------------------------------------------------------------------
+     *  parse extern IP from FicsConfig.xml
+     *-----------------------------------------------------------------------------*/
+    if (xml.FindElem("fics"))
+    {
+        xml.IntoElem();
+        if (xml.FindElem("NodeServersInfo"))
+        {
+            xml.IntoElem();
+            while (xml.FindElem("OneNodeServer"))
+            {
+                xml.IntoElem();
+                xml.FindElem("ExternalIps");
+                xml.IntoElem();
+                while (xml.FindElem("IP"))
+                {
+                    strTmp = xml.GetData();
+                    vecIpAddr.push_back(inet_addr(strTmp.c_str()));                               
+                }
+                xml.OutOfElem();            
+                xml.OutOfElem();            
+            }
+        }
+    }
+    if (!vecIpAddr.empty())
+    {
+        ret = 0;
+    }
+
+    return ret;
+}
+int getLocalIpAll(std::vector<unsigned long>& vecIpAddr)
+{
+#if defined(_WIN32) || defined(_WIN64)
+
+    WSADATA wsaData;
+    int err = WSAStartup(MAKEWORD(2,2),&wsaData);
+    if (err != 0)
+    { 
+        assert(0);
+        return -1;
+    }
+
+    char szHostName[128]; 
+
+    err = gethostname(szHostName, 128);
+    if( err != 0 ) 
+    {    
+        assert(0);
+        return -1;
+    }
+
+    struct hostent * pHost; 
+    pHost = gethostbyname(szHostName); 
+
+    for (int i=0; (pHost != NULL) && (pHost->h_addr_list[i] != NULL); i++) 
+    { 
+        vecIpAddr.push_back(((struct in_addr *)pHost->h_addr_list[i])->s_addr);
+    }
+
+    WSACleanup();
+#else    
+    int s;
+    struct ifconf conf;
+    struct ifreq *ifr;
+    char buff[BUFSIZ];
+    int num;
+    int i;
+
+    s = socket(PF_INET, SOCK_DGRAM, 0);
+
+    conf.ifc_len = BUFSIZ;
+    conf.ifc_buf = buff;
+
+    ioctl(s, SIOCGIFCONF, &conf);
+    num = conf.ifc_len / sizeof(struct ifreq);
+    ifr = conf.ifc_req;
+
+    for (i = 0; i < num; i++)
+    {
+        struct sockaddr_in *sin = (struct sockaddr_in *)(&ifr->ifr_addr);
+
+        ioctl(s, SIOCGIFFLAGS, ifr);
+        if (((ifr->ifr_flags & IFF_LOOPBACK) == 0) && (ifr->ifr_flags & IFF_UP))
+        {
+            //printf("%s %s \n",ifr->ifr_name,inet_ntoa(sin->sin_addr));
+
+            if (0 != sin->sin_addr.s_addr)
+            {
+                vecIpAddr.push_back(sin->sin_addr.s_addr);
+            }
+        }
+        ifr++;
+    }
+
+    close(s);    
+#endif
+    return 0;
+}
+int getServerIP(std::vector<unsigned long>& vecIpAddr)
+{
+    int ret = -1;
+    vector<unsigned long> vecIpAddrXml;
+
+    if (0 == getIPfromXml(vecIpAddrXml))
+    {
+        if (vecIpAddrXml.size() >= 2)
+        {
+            ret = 0;
+        }
+        vecIpAddr.push_back(vecIpAddrXml[0]);
+        vecIpAddr.push_back(vecIpAddrXml[1]);
+    }
+    return ret;
+}
+
 int writeLocalVer(version_t *ver)
 {
     char patchVerBuf[200];
@@ -73,12 +259,12 @@ int compareVersion(version_t *local, version_t *net)
     int localFirstVer   = 0;
     int localSecondVer  = 0;
     int localLastVer    = 0;
- 	int localDateYear   = 0;
-	int localDateMoth   = 0;
-	int localDateDay    = 0;
-	int newDateYear     = 0;
-	int newDateMoth     = 0;
-	int newDateDay      = 0;
+     int localDateYear   = 0;
+    int localDateMoth   = 0;
+    int localDateDay    = 0;
+    int newDateYear     = 0;
+    int newDateMoth     = 0;
+    int newDateDay      = 0;
     int localpatchno    = 0;
     int newerpatchno    = 0;
 
@@ -87,30 +273,30 @@ int compareVersion(version_t *local, version_t *net)
         goto err;
     }
     
-	sscanf(local->version, "v%d.%d.%d", &localFirstVer, &localSecondVer, &localLastVer);
-	sscanf(local->patchNo, "%d", &localpatchno);
-	sscanf(local->date, "%d.%02d.%02d", &localDateYear, &localDateMoth, &localDateDay);
-	ut_dbg("the local version:%s date:%s local %d.%d.%d date:%d.%d%d patch:%d\n",
+    sscanf(local->version, "v%d.%d.%d", &localFirstVer, &localSecondVer, &localLastVer);
+    sscanf(local->patchNo, "%d", &localpatchno);
+    sscanf(local->date, "%d.%02d.%02d", &localDateYear, &localDateMoth, &localDateDay);
+    ut_dbg("the local version:%s date:%s local %d.%d.%d date:%d.%d%d patch:%d\n",
      local->version, local->date ,localFirstVer,localSecondVer,localLastVer,
-		localDateYear,localDateMoth,localDateDay,localpatchno);
-	fflush(stdout);
+        localDateYear,localDateMoth,localDateDay,localpatchno);
+    fflush(stdout);
     if (0 == localFirstVer)
     {
         ut_err("is null\n");
     }
-	sscanf(net->patchNo, "%d", &newerpatchno);
-	sscanf(net->version,"v%d.%d.%d",&newFirstVer,&newSecondVer,&newLastVer);
-	sscanf(net->date,"%d.%02d.%02d",&newDateYear,&newDateMoth,&newDateDay);
+    sscanf(net->patchNo, "%d", &newerpatchno);
+    sscanf(net->version,"v%d.%d.%d",&newFirstVer,&newSecondVer,&newLastVer);
+    sscanf(net->date,"%d.%02d.%02d",&newDateYear,&newDateMoth,&newDateDay);
 
-//	newerver = version;
-//	newerdate = date;
-//	std::string newerno = patchno;
+//    newerver = version;
+//    newerdate = date;
+//    std::string newerno = patchno;
 
-	ut_dbg("from the net(svr/cli) version:%s date:%s net %d.%d.%d date:%d.%d%d patch:%d\n"
-	    , net->version, net->date,newFirstVer,newSecondVer,newLastVer,
-		newDateYear,newDateMoth,newDateDay,newerpatchno);
-	fflush(stdout);
-	ret = (localFirstVer*10000+localSecondVer*100+localLastVer) - (newFirstVer*10000+newSecondVer*100+newLastVer);
+    ut_dbg("from the net(svr/cli) version:%s date:%s net %d.%d.%d date:%d.%d%d patch:%d\n"
+        , net->version, net->date,newFirstVer,newSecondVer,newLastVer,
+        newDateYear,newDateMoth,newDateDay,newerpatchno);
+    fflush(stdout);
+    ret = (localFirstVer*10000+localSecondVer*100+localLastVer) - (newFirstVer*10000+newSecondVer*100+newLastVer);
     
     return ret;
 err:
@@ -186,53 +372,53 @@ int getPkgDlDir(int size, char* buff)
 int FiGetCurDir(int size,char* buff)
 {
 #ifdef WIN32
-	  char szPath[MAX_PATH];
+      char szPath[MAX_PATH];
       ::GetModuleFileName(GetModuleHandle(NULL), szPath, MAX_PATH);
-	  int len = strlen(szPath);
-	  int cnt=len-1;
-	  while(szPath[cnt]!='\\')
-	  {
-		  cnt--;
-	  }
-	  szPath[cnt]='\0';
-	  strcpy(buff,szPath);
-	  strcat(buff,"\\");
-	  return 1;
+      int len = strlen(szPath);
+      int cnt=len-1;
+      while(szPath[cnt]!='\\')
+      {
+          cnt--;
+      }
+      szPath[cnt]='\0';
+      strcpy(buff,szPath);
+      strcat(buff,"\\");
+      return 1;
 #else
     int icount = 0,icountTem = 0;
     //char cPath[1024] = {0};
     if (buff == NULL)
-	return 0;
-	#ifndef FI_MAC
-	icount  = readlink("/proc/self/exe",buff,size );
+    return 0;
+    #ifndef FI_MAC
+    icount  = readlink("/proc/self/exe",buff,size );
 #else
-	uint32_t usize=size;
-	icount = _NSGetExecutablePath(buff,&usize);
-	if(icount <0 )
-	{
-		buff[0] = '\0';
-		return 0;
-	}
-	icount  = strlen(buff);
+    uint32_t usize=size;
+    icount = _NSGetExecutablePath(buff,&usize);
+    if(icount <0 )
+    {
+        buff[0] = '\0';
+        return 0;
+    }
+    icount  = strlen(buff);
 #endif
-	if(icount < 0 || icount >= size)
-	{
-		buff[0] = '\0';
-		return 0;
-	}
-	buff[icount] = '\0';
-	icountTem = icount;
-	do
-	{
-		if(buff[icountTem] == '/')
-		{
-			icountTem++;
-			buff[icountTem] = '\0';
-			break;				
-		}
-		icountTem--;
-	}while(icountTem >= 0);
-	return icountTem;
+    if(icount < 0 || icount >= size)
+    {
+        buff[0] = '\0';
+        return 0;
+    }
+    buff[icount] = '\0';
+    icountTem = icount;
+    do
+    {
+        if(buff[icountTem] == '/')
+        {
+            icountTem++;
+            buff[icountTem] = '\0';
+            break;                
+        }
+        icountTem--;
+    }while(icountTem >= 0);
+    return icountTem;
     
 #endif
 
@@ -242,106 +428,106 @@ int FiGetCurDir(int size,char* buff)
 FiLock::FiLock()
 {
 #ifdef WIN32
-	InitializeCriticalSection(&mutex);
+    InitializeCriticalSection(&mutex);
 #else
-	pthread_mutex_init(&mutex,NULL);
+    pthread_mutex_init(&mutex,NULL);
 #endif
 }
 FiLock::~FiLock()
 {
 #ifdef WIN32
-	DeleteCriticalSection(&mutex);
+    DeleteCriticalSection(&mutex);
 #else
-	pthread_mutex_destroy(&mutex);
+    pthread_mutex_destroy(&mutex);
 #endif
 }
 
 int FiLock::lock()
 {
 #ifdef WIN32
-	EnterCriticalSection(&mutex);
+    EnterCriticalSection(&mutex);
 #else
-	pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&mutex);
 #endif
-	return 0;
+    return 0;
 }
 int FiLock::unlock()
 {
 #ifdef WIN32
-	LeaveCriticalSection(&mutex);
+    LeaveCriticalSection(&mutex);
 #else
-	pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex);
 #endif
-	return 0;	
+    return 0;    
 }
 
 FiEvent::FiEvent()
 {
 #ifdef WIN32
-	hEvent = CreateEvent(NULL,FALSE,FALSE,NULL);
+    hEvent = CreateEvent(NULL,FALSE,FALSE,NULL);
 #else
         pthread_mutex_init(&mutex,NULL);
-	//mutex = PTHREAD_MUTEX_INITIALIZER;
+    //mutex = PTHREAD_MUTEX_INITIALIZER;
         pthread_cond_init(&cond,NULL);
 #endif  
 }
 
 FiEvent::~FiEvent()
 {
-	#ifdef WIN32
-	CloseHandle(hEvent);
-	#else
-	pthread_cond_destroy(&cond);
+    #ifdef WIN32
+    CloseHandle(hEvent);
+    #else
+    pthread_cond_destroy(&cond);
     pthread_mutex_destroy(&mutex);
-	#endif
+    #endif
 }
 
 int FiEvent::signal()
 {
-	#ifdef WIN32
-	SetEvent(hEvent);
-	#else
-	pthread_cond_broadcast(&cond);
-	#endif
-	return 0;
+    #ifdef WIN32
+    SetEvent(hEvent);
+    #else
+    pthread_cond_broadcast(&cond);
+    #endif
+    return 0;
 }
 int FiEvent::wait(unsigned int timeout)//msec
 {
-	#ifdef WIN32
-	DWORD ret =0;
-	if(timeout ==0xffffffff)
-		ret = WaitForSingleObject(hEvent,INFINITE);
-	else
-		ret = WaitForSingleObject(hEvent,timeout);
-	if( ret ==WAIT_TIMEOUT)
-	{
-		return 0;
-	}
-	return 1;
-	#else
-	pthread_mutex_lock(&mutex);
-	int ret = -1;
-	if( timeout == 0xffffffff)
-	{
-		ret = pthread_cond_wait(&cond,&mutex);
-	}
-	else
-	{
-		struct timespec tsp;
-		struct timeval now;
-		gettimeofday(&now,NULL);
-		tsp.tv_sec=now.tv_sec+timeout/1000;
-		tsp.tv_nsec=now.tv_usec*1000;
-		ret = pthread_cond_timedwait(&cond,&mutex,&tsp);
-	}
+    #ifdef WIN32
+    DWORD ret =0;
+    if(timeout ==0xffffffff)
+        ret = WaitForSingleObject(hEvent,INFINITE);
+    else
+        ret = WaitForSingleObject(hEvent,timeout);
+    if( ret ==WAIT_TIMEOUT)
+    {
+        return 0;
+    }
+    return 1;
+    #else
+    pthread_mutex_lock(&mutex);
+    int ret = -1;
+    if( timeout == 0xffffffff)
+    {
+        ret = pthread_cond_wait(&cond,&mutex);
+    }
+    else
+    {
+        struct timespec tsp;
+        struct timeval now;
+        gettimeofday(&now,NULL);
+        tsp.tv_sec=now.tv_sec+timeout/1000;
+        tsp.tv_nsec=now.tv_usec*1000;
+        ret = pthread_cond_timedwait(&cond,&mutex,&tsp);
+    }
     pthread_mutex_unlock(&mutex);
-	if( ret == 0)
-	{
-		return 1;
-	}
-	return 0;
-	#endif
-	
+    if( ret == 0)
+    {
+        return 1;
+    }
+    return 0;
+    #endif
+    
 }
 #ifdef WIN32
 int FiCreateFile(const char* fullname)
@@ -364,9 +550,9 @@ int FiCreateFile(const char* fullname)
 {
     int ret = open(fullname,O_RDWR|O_CREAT|O_TRUNC,777);
     if( ret ==-1)
-	{
-		fclose(fopen(fullname,"w+"));
-	}
+    {
+        fclose(fopen(fullname,"w+"));
+    }
     close(ret);
     return ret;
 }
@@ -377,17 +563,17 @@ int FiCreateFile(const char* fullname)
 #ifdef WIN32
 int FiExecuteShell(const char* cmd)
 {
-	printf("%s\n",cmd);
-	//WinExec(cmd,SW_SHOW);
+    printf("%s\n",cmd);
+    //WinExec(cmd,SW_SHOW);
     system(cmd);
     return 0;
 }
 int FiExeWinUncompress(const char*cmd)
 {
-	printf("%s\n",cmd);
-	WinExec(cmd,SW_SHOW);
-	//system(cmd);
-	return 0;
+    printf("%s\n",cmd);
+    WinExec(cmd,SW_SHOW);
+    //system(cmd);
+    return 0;
 }
 #else
 int FiExecuteShell(const char* cmd)
@@ -413,8 +599,8 @@ FILEPTR FiOpenExistFile(const char* fullname)
     assert(hFile != INVALID_HANDLE_VALUE);
     return hFile;
 #else
-	int fp = open(fullname,O_RDWR);
-	assert( fp != -1 );
+    int fp = open(fullname,O_RDWR);
+    assert( fp != -1 );
     return fp;
 #endif
 }
@@ -431,7 +617,7 @@ int FiReadFile(FILEPTR fp,void*buff,int size)
         }
         return cnt;
  #else
-		ssize_t cnt = read(fp,buff,size);
+        ssize_t cnt = read(fp,buff,size);
         return cnt;
  #endif
 }
@@ -451,26 +637,26 @@ int FiSeekFile(FILEPTR fp,long dis,int dir)
 #ifdef WIN32
     SetFilePointer(fp,dis,NULL, dir);
 #else
-	lseek(fp,dis,dir);
+    lseek(fp,dis,dir);
 #endif
     return 0;
 }
 int FiWriteFile(FILEPTR fp,void*buff,int size)
 {
-	#ifdef WIN32
-	DWORD dwsize=0;
-	BOOL ret = WriteFile(fp,buff,size,&dwsize,0);
-	if( ret = TRUE)
-	{
-	       return size;
-	}
-	assert(ret);
-	return -1;
-	#else
-	ssize_t cnt = write(fp,buff,size);
-	assert(cnt>0);
-	return cnt;
-	#endif
+    #ifdef WIN32
+    DWORD dwsize=0;
+    BOOL ret = WriteFile(fp,buff,size,&dwsize,0);
+    if( ret = TRUE)
+    {
+           return size;
+    }
+    assert(ret);
+    return -1;
+    #else
+    ssize_t cnt = write(fp,buff,size);
+    assert(cnt>0);
+    return cnt;
+    #endif
     
 }
 
@@ -484,13 +670,13 @@ int FiCreateDir(char* path)
     sprintf(cmdBuf, "mkdir -p %s; chmod 777 %s", path, path);
  return system(cmdBuf);//mkdir(path,777);
 #endif
-	return 0;
+    return 0;
 }
 
 int FiGetAllFolder(const char *path,std::vector<std::string>& allfolders)
 {
-	#ifdef WIN32
-	WIN32_FIND_DATA FindFileData;  
+    #ifdef WIN32
+    WIN32_FIND_DATA FindFileData;  
     HANDLE hFind=INVALID_HANDLE_VALUE;  
     std::string fullpath(path);
     fullpath+="*";
@@ -512,138 +698,138 @@ int FiGetAllFolder(const char *path,std::vector<std::string>& allfolders)
             }  
             if((FindFileData.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)!=0)      //判断如果是文件夹  
             {  
-				allfolders.push_back(FindFileData.cFileName);
+                allfolders.push_back(FindFileData.cFileName);
             }  
         }  
         FindClose(hFind);  
     }  
-	#else
-	if( path == NULL) {
-		return -1;
-	}
-	DIR*   dir=NULL; 
-	struct   dirent*   dirlist; 
-	struct   stat   filestat;
+    #else
+    if( path == NULL) {
+        return -1;
+    }
+    DIR*   dir=NULL; 
+    struct   dirent*   dirlist; 
+    struct   stat   filestat;
 
-	dir = opendir(path);
-	if( dir == NULL) {
-		return -1;
-	}
-	while( (dirlist=readdir(dir))!= NULL ) 
-	{
+    dir = opendir(path);
+    if( dir == NULL) {
+        return -1;
+    }
+    while( (dirlist=readdir(dir))!= NULL ) 
+    {
 
-		if(
-		   (strcmp(dirlist->d_name, ".")==0) ||
-		   (strcmp(dirlist->d_name, "..")==0)
-		  )
-		{
-			continue;
-		}
-		std::string fullName=path;
-		//fullName += "/";
-		fullName += dirlist->d_name;
-		//fullName.Format(_T("%s/%s"),W2A(path),dirlist->d_name);
-		stat(fullName.c_str(),&filestat);
-		if (S_ISDIR(filestat.st_mode) )
-		{
-			allfolders.push_back(dirlist->d_name);
-		}
+        if(
+           (strcmp(dirlist->d_name, ".")==0) ||
+           (strcmp(dirlist->d_name, "..")==0)
+          )
+        {
+            continue;
+        }
+        std::string fullName=path;
+        //fullName += "/";
+        fullName += dirlist->d_name;
+        //fullName.Format(_T("%s/%s"),W2A(path),dirlist->d_name);
+        stat(fullName.c_str(),&filestat);
+        if (S_ISDIR(filestat.st_mode) )
+        {
+            allfolders.push_back(dirlist->d_name);
+        }
 
-	}
-	
-	#endif
-	return 1;
+    }
+    
+    #endif
+    return 1;
 }
 
 // unsigned int conv(unsigned int a)
 // {
-// 	unsigned int b=0;
-// 	b|=(a<<24)&0xff000000;
-// 	b|=(a<<8)&0x00ff0000;
-// 	b|=(a>>8)&0x0000ff00;
-// 	b|=(a>>24)&0x000000ff;
-// 	return b;
+//     unsigned int b=0;
+//     b|=(a<<24)&0xff000000;
+//     b|=(a<<8)&0x00ff0000;
+//     b|=(a>>8)&0x0000ff00;
+//     b|=(a>>24)&0x000000ff;
+//     return b;
 //
 bool CheckFile_Md5(std::string& file1,std::string& file2)
 {
-	if( file1 == file2)
-		return true;
-	FILE* fp1= fopen(file1.c_str(),"rb");
-	FILE* fp2 = fopen(file2.c_str(),"rb");
-	if( fp1 == NULL || fp2==NULL)
-	{
-		return false;
-	}
-	MD5VAL mval1 = md5File(fp1);
-	MD5VAL mval2 = md5File(fp2);
-	//printf("MD5值1 : %08x%08x%08x%08x\n",(mval1.a),(mval1.b),(mval1.c),(mval1.d));
-	//printf("MD5值2 : %08x%08x%08x%08x\n",(mval2.a),(mval2.b),(mval2.c),(mval2.d));
-	if(memcmp(&mval1,&mval2,sizeof(MD5VAL)) ==0)
-	{
-		return true;
-	}
-	fclose(fp2);
-	fclose(fp1);
+    if( file1 == file2)
+        return true;
+    FILE* fp1= fopen(file1.c_str(),"rb");
+    FILE* fp2 = fopen(file2.c_str(),"rb");
+    if( fp1 == NULL || fp2==NULL)
+    {
+        return false;
+    }
+    MD5VAL mval1 = md5File(fp1);
+    MD5VAL mval2 = md5File(fp2);
+    //printf("MD5值1 : %08x%08x%08x%08x\n",(mval1.a),(mval1.b),(mval1.c),(mval1.d));
+    //printf("MD5值2 : %08x%08x%08x%08x\n",(mval2.a),(mval2.b),(mval2.c),(mval2.d));
+    if(memcmp(&mval1,&mval2,sizeof(MD5VAL)) ==0)
+    {
+        return true;
+    }
+    fclose(fp2);
+    fclose(fp1);
 
-	return false;
+    return false;
 }
 
 
 
 bool FiIsExistFile(const char* fullname)
 {
-	FILE* fp = fopen(fullname,"rb");
-	if(fp ==NULL)
-		return false;
-	fclose(fp);
-	return true;
+    FILE* fp = fopen(fullname,"rb");
+    if(fp ==NULL)
+        return false;
+    fclose(fp);
+    return true;
 }
 
 #ifdef WIN32
 bool travel_dir(char* path,std::vector<std::string>& allincfiles)
 {
-	//此结构说明参MSDN;
-	WIN32_FIND_DATA FindFileData;
-	//查找文件的句柄;
-	HANDLE hListFile;
-	char szFullPath[MAX_PATH];
-	//相对路径;
-	char szFilePath[MAX_PATH];
-	//构造相对路径;
-	sprintf(szFilePath, "%s\\*", path);
-	//查找第一个文件，获得查找句柄，如果FindFirstFile返回INVALID_HANDLE_VALUE则返回;
-	if((hListFile = FindFirstFile(szFilePath, &FindFileData)) == INVALID_HANDLE_VALUE)
-	{
-		//查找文件错误;
-		return false;
-	}
-	else
-	{
-		do 
-		{
-			//过滤.和..;
-			//“.”代表本级目录“..”代表父级目录;
-			if( FindFileData.cFileName[0]==(TCHAR)('.') )
-			{
-				continue;
-			}
-			std::string filename = FindFileData.cFileName;
-			//构造全路径;
-			sprintf(szFullPath, "%s\\%s", path, FindFileData.cFileName);
+    //此结构说明参MSDN;
+    WIN32_FIND_DATA FindFileData;
+    //查找文件的句柄;
+    HANDLE hListFile;
+    char szFullPath[MAX_PATH];
+    //相对路径;
+    char szFilePath[MAX_PATH];
+    //构造相对路径;
+    sprintf(szFilePath, "%s\\*", path);
+    //查找第一个文件，获得查找句柄，如果FindFirstFile返回INVALID_HANDLE_VALUE则返回;
+    if((hListFile = FindFirstFile(szFilePath, &FindFileData)) == INVALID_HANDLE_VALUE)
+    {
+        //查找文件错误;
+        return false;
+    }
+    else
+    {
+        do 
+        {
+            //过滤.和..;
+            //“.”代表本级目录“..”代表父级目录;
+            if( FindFileData.cFileName[0]==(TCHAR)('.') )
+            {
+                continue;
+            }
+            std::string filename = FindFileData.cFileName;
+            //构造全路径;
+            sprintf(szFullPath, "%s\\%s", path, FindFileData.cFileName);
 
 
-			//如果是文件夹，则递归调用EnmuDirectory函数;
-			if(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			{
-				filename +="/*";
-			}
-			allincfiles.push_back(filename);
-			
-		}while(FindNextFile(hListFile, &FindFileData));
-	}
-	//关闭句柄;
-	FindClose(hListFile);
-	return true;
+            //如果是文件夹，则递归调用EnmuDirectory函数;
+            if(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
+                filename +="/*";
+            }
+            allincfiles.push_back(filename);
+            
+        }while(FindNextFile(hListFile, &FindFileData));
+    }
+    //关闭句柄;
+    FindClose(hListFile);
+    return true;
 }
 #else
 bool travel_dir(char* path,std::vector<std::string>& allincfiles)
@@ -672,18 +858,18 @@ bool travel_dir(char* path,std::vector<std::string>& allincfiles)
         {
             continue;
         }
-		std::string filename =dirlist->d_name; 
-		std::string fullName=path;
-		fullName += "/";
-		fullName += dirlist->d_name;
-		stat(fullName.c_str(),&filestat);
+        std::string filename =dirlist->d_name; 
+        std::string fullName=path;
+        fullName += "/";
+        fullName += dirlist->d_name;
+        stat(fullName.c_str(),&filestat);
 
-		if(S_ISDIR(filestat.st_mode) )
-		{
-			filename +="/*";
+        if(S_ISDIR(filestat.st_mode) )
+        {
+            filename +="/*";
 
-		}
-		allincfiles.push_back(filename);
+        }
+        allincfiles.push_back(filename);
     }
     closedir(dir);
     return true;

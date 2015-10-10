@@ -303,7 +303,7 @@ bool FiUpdateAssistant::ConnectUpMgr()
 #else
     if(which==CLIENT)
     {
-        strNetConfig +="../ficlient.xml";
+        strNetConfig +="../config/network.xml";
     }
     else
     {
@@ -1075,6 +1075,7 @@ int FiUpdateAssistant::svc()
         FiWriteFile(fpinstall,(void*)("pkill -9 fiioctlproxy \n"),strlen("pkill -9 fiioctlproxy \n"));
  
     }
+    FiWriteFile(fpinstall,(void*)("unalias cp \n"),strlen("unalias cp \n"));
     std::string temp("chmod 777 ");
     temp+=downfilefullname+"*\n";
     FiWriteFile(fpinstall,(void*)(temp.c_str()),temp.length());
@@ -1545,7 +1546,7 @@ int FiUpdateAssistant::svc()
         }
         else
         {
-            startupself = installpath +"Fics\\FiWatchDog.exe  \r\n";
+            startupself = installpath +"FiWatchDog.exe  \r\n";
         }
         //FiWriteFile(fpinstall,(void*)(startupself.c_str()),killself.length());
         //FiWriteFile(fpuninstall,(void*)(startupself.c_str()),killself.length());

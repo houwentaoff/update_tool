@@ -1,0 +1,13 @@
+<fiupdate>
+<file name="./update/FiUpdateLoader" action="A" location="/sobey/fics/update"/>
+<file name="./update/FiUpdateMgr" action="A" location="/sobey/fics/update"/>
+<file name="./update/monitor_update.py" action="A" location="/sobey/fics/update"/>
+<file name="./update/monitor_update_svr.py" action="A" location="/sobey/fics/update"/>
+<file name="libs/*" action="M" location="/sobey/fics"/>
+<file name="web/*" action="A" location="/sobey/fics"/>
+<file name="client/*" action="A" location="/sobey/fics"/>
+<file name="fiversion" action="M" location="/sobey/fics"/>
+<file name="mds/*" action="A" location="/sobey/fics"/>
+<file name="format/*" action="A" location="/sobey/fics"/>
+</fiupdate>
+

@@ -252,6 +252,13 @@ int init_helloType(helloType_t *hello)
     
     return 0;
 }
+/**
+ * @brief 接收master/其他server 的心跳包，更新download下的当前zip全版本安装包。master只发心跳包，不接收(master是所有的源)。
+ *
+ * @param params
+ *
+ * @return 
+ */
 void* recvHelloHandler(void *params)
 {
     int s;                                       
@@ -381,18 +388,16 @@ int sendHello()
     helloType_t hello;
     version_t localVer;
     struct sockaddr_in mcast_addr;      
-    XmlParserEngine xmlParser;
     std::string localIp;
 
     init_helloType(&hello);
     memset(&localVer, 0, sizeof(version_t));
-    if (!xmlParser.load("../config/bootip.xml"))
+
+    if (getCurLocalIp(localIp) < 0)
     {
-        ut_err("bootip.xml is not exist\n");
+        ut_err("get local ip fail\n");
         return -1;
     }
-
-    localIp= xmlParser.GetEle("localip");
     getLocalVersion(&localVer);
 
     s = socket(AF_INET, SOCK_DGRAM, 0);         
@@ -497,6 +502,7 @@ int main(int argc,char** argv)
         print_usage(stderr, 1);
         return -1;
     }
+    system("mkdir -p ../download");
 	if (pthread_attr_init(&attr[0]) < 0)
 	{
 		ut_err("set attr fail\n");

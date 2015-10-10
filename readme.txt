@@ -13,7 +13,7 @@
     ├── Massvr_v1.0.0_2015.09.14_64_Linux2.6.tar.gz      #下载机服务器包名
     ├── readme.txt
     └── server_v1.0.0_2015.09.14_64_Linux2.6.tar.gz      #linux服务端包名
-    安装包的内容直接替换示例中目录的文件:
+    安装包的内容直接替换示例中目录的文件或者用脚本打包:直接运行./gen_patch.sh就能看见该脚本打包的用法示例。  
     ps:
     linux下需要omniORB库支持，在你的linux机器上安装https://192.168.252.32/svn/fishare/trunk/fics_v1.1/code/fics_update/omniORB-4.1.4.tar.gz
     note: 现在你不必安装omniORB-4.1.4.tar.gz,已经将动态编译打包成静态编译。
@@ -22,20 +22,22 @@
 
 WIN cli
 -Sobey
-    ├── Config
-    │   └── network.xml             #填写本地Ip和下载服务器Ip(需手动填写)需确保此文件存在并填写正确                                                
-    ├── Fics
-    │   ├── fitool.exe
-    │   ├── fiversion
-    │   ├── FiWatchDog.exe
-    │   ├── scm.exe
-    │   └── ....                    #Fics win客户安装文件
-    └── update
-        ├── 7z.dll                   #解压缩外部程序   
-        ├── 7z.exe
-        ├── FiUpdateLoader.exe       #手动升级服务器程序
-        ├── FiUpdateLoader.exe.old   #旧版本服务器程序
-        └── ....
+    └── Fics
+           ├── Config
+           │       ├── network.xml              #填写本地Ip和下载服务器Ip(需手动填写)需确保此文件存在并填写正确  
+           │       └── ....                     #fics安装包附带的其它配置文件
+           ├── update
+           │       ├── 7z.dll                   #解压缩外部程序   
+           │       ├── 7z.exe
+           │       ├── FiUpdateLoader.exe       #手动升级服务器程序
+           │       ├── FiUpdateLoader.exe.old   #旧版本服务器程序
+           │       └── ....
+           ├── fitool.exe
+           ├── fiversion
+           ├── FiWatchDog.exe
+           ├── scm.exe
+           └── ....                    #Fics win客户安装文件
+
 
     
 LINUX Server
@@ -53,7 +55,7 @@ LINUX Server
 LINUX Massvr
 -/sobey/fics
     ├── config
-    │   └── network.xml                             #本地Ip和下载服务器Ip                                                
+    │   └── network.xml                             #本地Ip和下载服务器Ip                                          
     ├── ......                                       #Fics linux服务端安装文件
     ├── patch_version                                #版本信息
     ├── web
@@ -73,7 +75,7 @@ LINUX Massvr
 LINUX Cli
 -/sobey/fics
     ├── config
-    │   └── network.xml                             #本地Ip和下载服务器Ip                                                
+    │   └── network.xml                             #本地Ip和下载服务器Ip                                         
     ├── ......
     ├── patch_version                                #版本信息
     ├── client

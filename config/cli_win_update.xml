@@ -1,0 +1,9 @@
+<fiupdate>
+<file name="Fics/*" action="A" location="%root/../"/>
+<file name="update\FiUpdateLoader.exe" action="A" location="%root/update/"/>
+<file name="fiversion" action="M" location="%root/"/>
+<file name="difsfsd.sys" action="M" location="C:\Windows\System32\drivers\"/>
+<file name="DiFsDisk.sys" action="M" location="C:\Windows\System32\drivers\"/>
+<file name="ScmDriver.sys" action="M" location="C:\Windows\System32\drivers\"/>
+<reboot>1</reboot>
+</fiupdate>

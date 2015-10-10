@@ -14,6 +14,39 @@
 #include<string>
 
 #include "include.h"
+
+/**
+ * @brief 从FicsConfig.xml解析所有的外部ip放入vecIpAddr
+ *
+ * @param vecIpAddr
+ *
+ * @return 
+ */
+int getIPfromXml(std::vector<unsigned long>& vecIpAddr);
+/**
+ * @brief 获取下载服务器的IP
+ *
+ * @param vecIpAddr
+ *
+ * @return 
+ */
+int getServerIP(std::vector<unsigned long>& vecIpAddr);
+/**
+ * @brief 获取和fics-config.xml匹配的外部IP
+ *
+ * @param ip
+ *
+ * @return 
+ */
+int getCurLocalIp(std::string &ip);
+/**
+ * @brief 获取本地所有网卡的Ip
+ *
+ * @param vecIpAddr
+ *
+ * @return 
+ */
+int getLocalIpAll(std::vector<unsigned long>& vecIpAddr);
 /**
  * @brief 比较2个版本号的大小
  *

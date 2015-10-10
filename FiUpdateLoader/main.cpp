@@ -13,10 +13,16 @@
 #else
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #endif
 #include <stdio.h>
 #include <string>
+
+
 //extern FILE *stdout;
+using namespace std;
 
 #define  FiEnableCoreDumps()\
 {\
@@ -116,76 +122,46 @@ int main(int argc, char **argv)
     std::string localIp;    
     int count = 2;
     int nodeSeq;
+    vector<unsigned long> vecIpAddr;
     CMarkup xmlmaker, xmlloader;
     
     FiGetCurDir(sizeof(pathConf),pathConf);
     strcat(pathConf, "../config/network.xml");
     if (!FiIsExistFile(pathConf))
     {
-        ut_err("update config : network.xml is not exist.\n");
-        goto err;
+        ut_err("update config : network.xml is not exist. try to auto generate.\n");
     }
     //linux 1. get local ip from bootip,2.get serverip from FicsConfig.xml 
 #ifndef WIN32
 
-
-    if (!xmlParser.load("../config/bootip.xml"))
+    if (getCurLocalIp(localIp) < 0)
     {
-        ut_err("bootip.xml is not exist\n");
+        ut_err("getCurLocalIp fail\n");
         goto err;
     }
 
-    localIp= xmlParser.GetEle("localip");
-
-    serverIp[0] = xmlParser.GetEle("ServerIp");
-    serverIp[1] = xmlParser.GetEle("ServerIp");
-
-    xmlmaker.SetDoc("xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n");     
-    if (!xmlloader.Load("../config/FicsConfig.xml"))
+    if (getServerIP(vecIpAddr) < 0)
     {
-        ut_err("FicsConfig.xml is not exist\n");
+        ut_err("get server download ip fail\n");
         goto err;
     }
-
-    xmlloader.ResetMainPos();
-    xmlloader.FindElem();
-    xmlloader.IntoElem();
-    xmlloader.FindElem();
-    xmlloader.IntoElem();
-
-    while (count--)
-    {
-        xmlloader.FindElem("OneNodeServer");
-        xmlloader.IntoElem();
-        if (xmlloader.FindElem("NodeSeq"))
-        {
-            nodeSeq = atoi(xmlloader.GetData().c_str());
-            if (nodeSeq == 0 || nodeSeq == 1)//server 
-            {
-                if (!xmlloader.FindElem("InternalIPs"))
-                {
-                    ut_err("FicsConfig.xml InternalIPs is not exist\n");
-                    goto err;
-                }
-                xmlloader.IntoElem();
-                if (!xmlloader.FindElem("IP"))
-                {
-                    ut_err("xml IP is not exist\n");
-                    goto err;
-                }
-                serverIp[nodeSeq] = xmlloader.GetData();
-                xmlloader.OutOfElem();
-            }
-        }
-        xmlloader.OutOfElem();
-    }
-    
+//    unsigned long tmp = vecIpAddr[0];
+    serverIp[0] = inet_ntoa(*((struct in_addr*)&vecIpAddr[0]));
+    serverIp[1] = inet_ntoa(*((struct in_addr*)&vecIpAddr[1]));
+    xmlmaker.SetDoc("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n");     
     xmlmaker.AddElem("UpMgrConfig");
     xmlmaker.IntoElem();
     xmlmaker.AddElem("LocalIP", localIp.c_str());
     xmlmaker.AddElem("UpMgrIp", serverIp[0].c_str());
     xmlmaker.AddElem("UpMgrBackIp", serverIp[1].c_str());
-    xmlmaker.Save("../config/network.xml");
+    if (!xmlmaker.Save("../config/network.xml"))
+    {
+        ut_err("generate network.xml fail\n");
+    }
+    else
+    {
+        ut_dbg("generate network.xml success\n");
+    }
 #endif
     FiUpdateAssistant::getinstance()->set(&evnt);
     FiUpdateAssistant::getinstance()->startup();

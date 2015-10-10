@@ -27,7 +27,7 @@ while True:
         ret = os.popen('pgrep FiUpdateMgr').readlines()
         if len(ret) < 1:
             print "FiUpdateLoader killed, restarting it in 2 s"
-        time.sleep(1)
-        os.system("/sobey/fics/update/FiUpdateMgr -m &") 
+            time.sleep(1)
+            os.system("/sobey/fics/update/FiUpdateMgr -m &") 
     except:
         print "Error", sys.exc_info()[1]

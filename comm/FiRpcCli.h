@@ -132,7 +132,7 @@ public:
 		strcat(buff,"/");
 		strcat(buff,name);
 		try{
-			_orbHandle = orb->string_to_object(buff);//step 2 "corbaloc:iiop:ip:port/name" 协议规范 连接服务器 netstat  -nt 查看 
+			_orbHandle = orb->string_to_object(buff);//"corbaloc:iiop:ip:port/name" 协议规范 连接服务器 netstat  -nt 查看 
 			ret= T::_narrow(_orbHandle);
 		}
 		catch(CORBA::TRANSIENT&) {
@@ -204,7 +204,7 @@ protected:
 // 	}
 
 
-	CORBA::ORB_var GenOrb()//step 1
+	CORBA::ORB_var GenOrb()
 	{
 		CORBA::ORB_var       orb;
 		int    argc =0;

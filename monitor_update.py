@@ -27,8 +27,8 @@ while True:
         ret = os.popen('pgrep FiUpdateLoader').readlines()
         if len(ret) < 1:
             print "FiUpdateLoader killed, restarting it in 2 s"
-        time.sleep(1)
+            time.sleep(1)
 #        os.system("start-stop-daemon -S -x ./onvifserver &") 
-        os.system("/sobey/fics/update/FiUpdateLoader &") 
+            os.system("/sobey/fics/update/FiUpdateLoader &") 
     except:
         print "Error", sys.exc_info()[1]
