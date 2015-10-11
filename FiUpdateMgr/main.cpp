@@ -51,11 +51,19 @@ static struct {
     dev_e type; 
     bool master;
 }umparams;
+
+typedef enum
+{
+    LEADER=0,/*fics update leader:fics下载机的leader*/
+    FOLLOWER,  /*fics update fllower:fics下载机的follower*/ 
+}idType_e;
+
 typedef struct
 {
     char ip[40];//server ip
     char port[30];//open port RPC_PORT
     char nodeId[30];//master:0 other:-1
+    idType_e type;
 }endPoint_t;
 typedef struct
 {
@@ -73,7 +81,7 @@ static void print_usage(FILE *f, int exit_code)
         program_name);
     fprintf(f,
             "\t -h  --help         \n"
-            "\t -m  --master       \n"
+            "\t -m  --master(leader)       \n"
             "\t example:%s  --master \n",
             program_name
             );
@@ -322,7 +330,7 @@ void* recvHelloHandler(void *params)
         {
             ut_err("recvfrom()\n");
         }
-        if (strcmp(buff.action, "action:hello") != 0)
+        if (strcmp(buff.action, "action:hello") != 0 && buff.endPoint.type != LEADER)
         {
             continue;
         }
@@ -414,6 +422,7 @@ int sendHello()
         RPC_PORT);
     sprintf(hello.endPoint.nodeId+strlen(hello.endPoint.nodeId),"%d",
         umparams.master ? 0 : -1);//need to modify
+    hello.endPoint.type = umparams.master == true ? LEADER : FOLLOWER;
     memset(&mcast_addr, 0, sizeof(mcast_addr));/*初始化IP多播地址为0*/
     mcast_addr.sin_family = AF_INET;                 /*设置协议族类行为AF*/
     mcast_addr.sin_addr.s_addr = inet_addr(MCAST_ADDR);/*设置多播IP地址*/
@@ -492,6 +501,7 @@ int main(int argc,char** argv)
     FiEnableCoreDumps();
     pthread_t tid[3];
 	pthread_attr_t attr[3];
+    struct stat st;
     umparams.type = SERVER;//default type
     umparams.master == false;
 
@@ -501,6 +511,15 @@ int main(int argc,char** argv)
     {
         print_usage(stderr, 1);
         return -1;
+    }
+    if (stat("../download", &st) == -1)
+    {
+        ut_err("stat error num :%d\n", errno);
+        return -2;
+    }
+    if (!S_ISDIR(st.st_mode))
+    {
+        system("rm ../download -rf");
     }
     system("mkdir -p ../download");
 	if (pthread_attr_init(&attr[0]) < 0)
