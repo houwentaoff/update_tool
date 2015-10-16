@@ -1,0 +1,35 @@
+<fiupdate>
+<!--软件更新配置文件-->
+
+<file name="./libs/libcomutility.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libfiBigCache.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libFicsJNI.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libficsnet.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libficsNetSyn.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libfiOsd.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libFiPrtCache.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libfisamba.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libfishareapi.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libfistate.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libjournal.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libJson.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libnixscmd.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libprtmds.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libTaskJournal.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libzookeeper_mt.so" action="A" location="/sobey/fics/libs/"/>
+<file name="./libs/libzookeeper_mt.so.2.0.0" action="A" location="/sobey/fics/libs/"/>
+
+<file name="./mds/fimds" action="A" location="/sobey/fics/mds/"/>
+
+<file name="./client/fiioctlproxy" action="A" location="/sobey/fics/client"/>
+<file name="./client/fitool" action="A" location="/sobey/fics/client"/>
+<file name="./client/fiwatchdog" action="A" location="/sobey/fics/client"/>
+<file name="./client/reloadmount.pl" action="A" location="/sobey/fics/client"/>
+<file name="./client/scm" action="A" location="/sobey/fics/client"/>
+<file name="./client/smbusermgr.sh" action="A" location="/sobey/fics/client"/>
+
+<file name="./format/FicsFormatterEx.exe" action="A" location="/sobey/fics/format"/>
+
+<file name="./web/WebClient" action="A" location="/sobey/fics/web"/>
+
+</fiupdate>

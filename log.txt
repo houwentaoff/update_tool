@@ -1,3 +1,7 @@
+/*2015 10 13 hwt*/
+1. 增加linux客户端在不存在config/FicsConfig.xml情况下时自动扫描client/Config目录中的FicsConfig.xml文件，若解析发现多个则全部尝试连接。 
+2. 增加若版本包时间发生变更也升级或者回退。（原来只比较v1.2.0 这3个版本号）
+3. 增加打包zip安装包的脚本，gen_zip.sh.
 /*2015 10 10 hwt*/
 1. 增加打包脚本将打包文件剔除干净。
 2. win cli下添加重启。

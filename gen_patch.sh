@@ -12,7 +12,7 @@
 #          BUGS: ---
 #         NOTES: ---
 #        AUTHOR: Dr. Sean (hwt),  houwentaoff@gmail.com
-#  ORGANIZATION: Sobey Iserlohn,  China
+#  ORGANIZATION: Sobey chengdu,  China
 #       CREATED: Friday, October 09, 2015 9:45
 #      REVISION:  ---
 #===============================================================================
@@ -90,12 +90,15 @@ function tar_cli_win()
     mkdir -p ${cli_dir_tmp}/Fics
     cp -a ${path}/win_client/*.exe ${cli_dir_tmp}/Fics/ -f
     cp -a ${path}/win_client/*.dll ${cli_dir_tmp}/Fics/ -f
+    cp -a ${path}/win_client/*.pdb ${cli_dir_tmp}/Fics/ -f
 
     if [ "${bit}" -eq "32" ]
     then
         cp -a ${path}/win_client/x32/*.sys ${cli_dir_tmp}/ -f
+        cp -a ${path}/win_client/x32/*.sys ${cli_dir_tmp}/Fics/ -f
     else
         cp -a ${path}/win_client/x64/*.sys ${cli_dir_tmp}/ -f
+        cp -a ${path}/win_client/x64/*.sys ${cli_dir_tmp}/Fics/ -f
     fi
     cp -a ${path}/win_client/update ${cli_dir_tmp}/ -rf
     cp -a ${path}/cli_win_update.xml ${cli_dir_tmp}/update.xml -f

@@ -45,17 +45,28 @@
 #include <sys/param.h> 
 #include <net/if_arp.h> 
 #endif
+#include <algorithm>
+#include <time.h>
 
 #define BUFSIZ          512            /*  */
-
+#ifndef WIN32
+#define TIMEZONE_OFFSET(foo) foo->tm_gmtoff
+#else
+#define TIMEZONE_OFFSET(foo) (8*60*60)
+#endif
 using namespace std;
+int use_localtime = 1 ;
+const char month_tab[49] =
+    "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec ";
+const char day_tab[] = "Sun,Mon,Tue,Wed,Thu,Fri,Sat,";
+
 
 int getCurLocalIp(std::string& ip)
 {
     int ret = -1;
     int i,j;
     vector<unsigned long> localIp;
-    vector<unsigned long> vecIpAddrXml;
+    vector<nodeIp_t> vecIpAddrXml;
 
     getLocalIpAll(localIp);//get ip addr from `ifconfig`
     getIPfromXml(vecIpAddrXml);
@@ -64,7 +75,7 @@ int getCurLocalIp(std::string& ip)
     {
         for (j = 0; j < localIp.size(); j++)
         {
-            if (localIp[j] == vecIpAddrXml[i])
+            if (localIp[j] == vecIpAddrXml[i].ip)
             {
                 unsigned long tmp = localIp[j];
                 struct in_addr *test;
@@ -83,40 +94,131 @@ int getCurLocalIp(std::string& ip)
     }
     return ret;
 }
-int getIPfromXml(std::vector<unsigned long>& vecIpAddr)
+
+
+int getIPfromXml(std::vector<nodeIp_t>& vecIpAddr)
 {
     CMarkup xml;
     char *cfgConfig = "../config/FicsConfig.xml";
     std::string strTmp;
     int ret = -1;
-
-    if (!xml.Load(cfgConfig)) 
+    char cmdBuf[256];
+    FILE *fp = NULL;
+    char tmppath[256]={0};
+    int r=0;
+    std::vector<string> pathList;
+    vector<string>::iterator iter;
+    vector<nodeIp_t>::iterator it;
+    int nodeId;
+//#ifndef WIN32    
+    if (!FiIsExistFile(cfgConfig))
     {
-        ut_err("load ficsconfig xml[%s] failed\n", cfgConfig);
-        return ret;
-    }    
+//        if ()//服务端不允许不存在
+        ut_err("file [%s] is not exist, try to auto generate\n", cfgConfig);
+        //scan all FicsConfig.xml then connect all ip who is node[0-1].
+#ifdef WIN32
+		sprintf(cmdBuf, "dir /s /b ..\\*FicsConfig.xml");
+#else
+		sprintf(cmdBuf, "find ../client/Config -name \'FicsConfig.xml\'");
+#endif
 
-    /*-----------------------------------------------------------------------------
-     *  parse extern IP from FicsConfig.xml
-     *-----------------------------------------------------------------------------*/
-    if (xml.FindElem("fics"))
+#ifdef WIN32
+		if (NULL ==(fp = _popen(cmdBuf, "r")))
+		{
+            ut_err("_popen error \n");
+			ret = -2;
+			return ret;
+		}
+        do
+        {
+            r = fscanf(fp, "%[^\n]", tmppath);
+            fgetc(fp);
+            if (r != EOF)
+            {
+                pathList.push_back(tmppath);
+            }
+        }while (r != EOF);
+        _pclose(fp);
+#else
+        if (NULL == (fp = popen(cmdBuf, "r")))
+        {
+            ut_err("popen error errno[%d]\n", errno);
+            ret = -2;
+            return ret;
+        }
+        do
+        {
+            r = fscanf(fp, "%[^\n]", tmppath);
+            fgetc(fp);
+            if (r != EOF)
+            {
+                pathList.push_back(tmppath);
+            }
+        }while (r != EOF);
+        pclose(fp);
+#endif
+    }
+    else
     {
-        xml.IntoElem();
-        if (xml.FindElem("NodeServersInfo"))
+        pathList.push_back(cfgConfig);
+    }
+    for (iter = pathList.begin(); iter != pathList.end(); iter++)
+    {
+
+        if (!xml.Load(iter->c_str())) 
+        {
+            ut_err("load ficsconfig xml[%s] failed\n", cfgConfig);
+            return ret;
+        }    
+
+        /*-----------------------------------------------------------------------------
+         *  parse extern IP from FicsConfig.xml
+         *-----------------------------------------------------------------------------*/
+        if (xml.FindElem("fics"))
         {
             xml.IntoElem();
-            while (xml.FindElem("OneNodeServer"))
+            if (xml.FindElem("NodeServersInfo"))
             {
                 xml.IntoElem();
-                xml.FindElem("ExternalIps");
-                xml.IntoElem();
-                while (xml.FindElem("IP"))
+                while (xml.FindElem("OneNodeServer"))
                 {
-                    strTmp = xml.GetData();
-                    vecIpAddr.push_back(inet_addr(strTmp.c_str()));                               
+                    xml.IntoElem();
+                    if (xml.FindElem("NodeSeq"))
+                    {
+#ifdef WIN32
+						std::string nodeSeq;
+						nodeSeq = xml.GetData();
+						nodeId = atoi(nodeSeq.c_str());
+#else
+                        nodeId = atoi(xml.GetData().c_str());
+#endif
+                    }
+                    xml.FindElem("ExternalIps");
+                    xml.IntoElem();
+                    while (xml.FindElem("IP"))
+                    {
+                        strTmp = xml.GetData();
+                        unsigned long ip = inet_addr(strTmp.c_str());
+                        bool exist = false;
+                        for (it = vecIpAddr.begin(); it != vecIpAddr.end(); it++)
+                        {
+                            if (it->ip == ip && it->nodeId == nodeId)
+                            {
+                                exist = true;
+                                break;
+                            }
+                        }
+                        if (exist == false)
+                        {
+                            nodeIp_t tmp;
+                            tmp.ip = ip;
+                            tmp.nodeId = nodeId;
+                            vecIpAddr.push_back(tmp);
+                        }
+                    }
+                    xml.OutOfElem();            
+                    xml.OutOfElem();            
                 }
-                xml.OutOfElem();            
-                xml.OutOfElem();            
             }
         }
     }
@@ -198,7 +300,8 @@ int getLocalIpAll(std::vector<unsigned long>& vecIpAddr)
 int getServerIP(std::vector<unsigned long>& vecIpAddr)
 {
     int ret = -1;
-    vector<unsigned long> vecIpAddrXml;
+    vector<nodeIp_t> vecIpAddrXml;
+    vector<nodeIp_t>::iterator it;
 
     if (0 == getIPfromXml(vecIpAddrXml))
     {
@@ -206,8 +309,15 @@ int getServerIP(std::vector<unsigned long>& vecIpAddr)
         {
             ret = 0;
         }
-        vecIpAddr.push_back(vecIpAddrXml[0]);
-        vecIpAddr.push_back(vecIpAddrXml[1]);
+//        find (vecIpAddrXml.begin(), vecIpAddrXml.end(), ())
+        for (it = vecIpAddrXml.begin();it != vecIpAddrXml.end();it++)
+        {
+            if ((*it).nodeId == 0 || (*it).nodeId == 1)
+            {
+                vecIpAddr.push_back((*it).ip);
+            }
+        }
+
     }
     return ret;
 }
@@ -259,7 +369,7 @@ int compareVersion(version_t *local, version_t *net)
     int localFirstVer   = 0;
     int localSecondVer  = 0;
     int localLastVer    = 0;
-     int localDateYear   = 0;
+    int localDateYear   = 0;
     int localDateMoth   = 0;
     int localDateDay    = 0;
     int newDateYear     = 0;
@@ -297,6 +407,10 @@ int compareVersion(version_t *local, version_t *net)
         newDateYear,newDateMoth,newDateDay,newerpatchno);
     fflush(stdout);
     ret = (localFirstVer*10000+localSecondVer*100+localLastVer) - (newFirstVer*10000+newSecondVer*100+newLastVer);
+    if (ret == 0)
+    {
+        ret = (localDateYear*10000+localDateMoth*100+localDateDay) - (newDateYear*10000+newDateMoth*100+newDateDay);
+    }
     
     return ret;
 err:
@@ -778,7 +892,12 @@ bool CheckFile_Md5(std::string& file1,std::string& file2)
 
 bool FiIsExistFile(const char* fullname)
 {
-    FILE* fp = fopen(fullname,"rb");
+    FILE* fp = NULL;
+#ifdef WIN32
+	fp = fopen(_T(fullname),_T("rb"));
+#else
+	fp = fopen(fullname, "rb");
+#endif
     if(fp ==NULL)
         return false;
     fclose(fp);
@@ -875,3 +994,66 @@ bool travel_dir(char* path,std::vector<std::string>& allincfiles)
     return true;
 }
 #endif
+char *get_commonlog_time(void)
+{
+    struct tm *t;
+    char *p;
+    unsigned int a;
+    static char buf[30];
+    int time_offset;
+    time_t current_time;
+
+    time(&current_time);
+    
+    if (use_localtime) {
+        t = localtime(&current_time);
+        time_offset = TIMEZONE_OFFSET(t);
+    } else {
+        t = gmtime(&current_time);
+        time_offset = 0;
+    }
+
+    p = buf + 29;
+    *p-- = '\0';
+    *p-- = ' ';
+    *p-- = ']';
+    a = abs(time_offset / 60);
+    *p-- = '0' + a % 10;
+    a /= 10;
+    *p-- = '0' + a % 6;
+    a /= 6;
+    *p-- = '0' + a % 10;
+    *p-- = '0' + a / 10;
+    *p-- = (time_offset >= 0) ? '+' : '-';
+    *p-- = ' ';
+
+    a = t->tm_sec;
+    *p-- = '0' + a % 10;
+    *p-- = '0' + a / 10;
+    *p-- = ':';
+    a = t->tm_min;
+    *p-- = '0' + a % 10;
+    *p-- = '0' + a / 10;
+    *p-- = ':';
+    a = t->tm_hour;
+    *p-- = '0' + a % 10;
+    *p-- = '0' + a / 10;
+    *p-- = ':';
+    a = 1900 + t->tm_year;
+    while (a) {
+        *p-- = '0' + a % 10;
+        a /= 10;
+    }
+    /* p points to an unused spot */
+    *p-- = '/';
+    p -= 2;
+    memcpy(p--, month_tab + 4 * (t->tm_mon), 3);
+    *p-- = '/';
+    a = t->tm_mday;
+    *p-- = '0' + a % 10;
+    *p-- = '0' + a / 10;
+    *p = '[';
+    return p;                   /* should be same as returning buf */
+}
+
+

@@ -15,14 +15,34 @@
 
 #include "include.h"
 
+typedef struct 
+{
+    unsigned long ip;
+    int       nodeId;
+//    nodeIp_t(unsigned long ip, int nodeId):ip(ip),nodeId(nodeId){};
+}nodeIp_t;
 /**
- * @brief 从FicsConfig.xml解析所有的外部ip放入vecIpAddr
+ *  @brief: Returns the current time in common log format in a static
+ * char buffer.
+ *
+ * commonlog time is exactly 25 characters long
+ * because this is only used in logging, we add " [" before and "] " after
+ * making 29 characters
+ * "[27/Feb/1998:20:20:04 +0000] "
+ *
+ * Constrast with rfc822 time:
+ * "Sun, 06 Nov 1994 08:49:37 GMT"
+ * @return 
+ */
+char *get_commonlog_time(void);
+/**
+ * @brief 从FicsConfig.xml解析所有的外部ip+nodeId放入vecIpAddr
  *
  * @param vecIpAddr
  *
  * @return 
  */
-int getIPfromXml(std::vector<unsigned long>& vecIpAddr);
+int getIPfromXml(std::vector<nodeIp_t>& vecIpAddr);
 /**
  * @brief 获取下载服务器的IP
  *

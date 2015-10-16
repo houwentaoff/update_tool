@@ -1,0 +1,26 @@
+<ficlient>
+    <fidaemon>
+        <daemons>
+            <daemon>
+                <progname>/sobey/fics/client/scm</progname>
+                <type>0</type>
+                <key>scm</key>
+                <filetype>0</filetype>
+            </daemon>
+            <daemon>
+                <progname>/sobey/fics/update/FiUpdateLoader</progname>
+                <type>0</type>
+                <key>update</key>
+                <filetype>0</filetype>
+            </daemon>
+        </daemons>
+        <cleandump>
+            <!-- GB -->
+            <cleansize>1</cleansize>
+        </cleandump>
+        <route>0</route>
+    </fidaemon>
+    <scmd>
+        <fixedwebmode>1</fixedwebmode>
+    </scmd>
+</ficlient>

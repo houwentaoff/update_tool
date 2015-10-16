@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <UpMgrConfig>
-<LocalIP>172.16.133.254</LocalIP>
+<LocalIP>172.16.133.37</LocalIP>
 <UpMgrIp>172.16.133.75</UpMgrIp>
 <UpMgrBackIp>172.16.133.254</UpMgrBackIp>
+<UpMgrIp>172.16.149.81</UpMgrIp>
+<UpMgrBackIp>172.16.149.82</UpMgrBackIp>
+<UpMgrIp>172.16.149.6</UpMgrIp>
+<UpMgrBackIp>172.16.149.37</UpMgrBackIp>
 </UpMgrConfig>

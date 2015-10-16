@@ -284,15 +284,17 @@ int FiUpdateAssistant::DestroyConnectUpMgr()
 {
     delete cli;
     cli = NULL;
-     return 0;
+    return 0;
 }
 
 bool FiUpdateAssistant::ConnectUpMgr()
 {
+    bool ret = false;
     cli = new FiRpcCli<FiUpdateMgr>;
     if( cli == NULL )
     {
-        return false;
+        ret = false;
+        return ret;
     }
     XmlParserEngine xmlParser;
     char buf[100];
@@ -311,33 +313,58 @@ bool FiUpdateAssistant::ConnectUpMgr()
     }
 #endif
     xmlParser.load(strNetConfig.c_str());
-    
-    //xmlParser.GetMgrIp();
-    std::string ip = xmlParser.GetEle("UpMgrIp");
-    std::string backIp = xmlParser.GetEle("UpMgrBackIp");
-
-    ut_dbg("load mgr ip from %s and ip is %s \n",strNetConfig.c_str(),ip.c_str());
-    fflush(stdout);
-    if( ip.empty())
+    CMarkup xml;
+    if (!xml.Load(strNetConfig.c_str()))
     {
-        ut_err("there is no <UpMgrIp> in the xml config file\n");
-        fflush(stdout);
+        ut_err("load ficsconfig xml[%s] failed\n", strNetConfig.c_str());
         return false;
     }
-    rHandle = cli->create_rpc_proxy(RPC_SERVER_NAME,(char*)(ip.c_str()), RPC_PORT);
-    if(rHandle == NULL)
+    //xmlParser.GetMgrIp();
+    if (xml.FindElem("UpMgrConfig"))
     {
-        ut_dbg("can not connect server %s with service %s at port %d\n", ip.c_str(), RPC_SERVER_NAME, RPC_PORT);
-        ut_dbg("try to connect back server  %s\n", backIp.c_str());
-        rHandle = cli->create_rpc_proxy(RPC_SERVER_NAME,(char*)(backIp.c_str()), RPC_PORT);
-        if (!rHandle)
+        xml.IntoElem();
+        while (xml.FindElem("UpMgrIp"))//find a node can connecting;find the newest version?
         {
-            ut_dbg("can not connect server %s with service %s at port %d\n", backIp.c_str(), RPC_SERVER_NAME, RPC_PORT);            
-            ut_dbg("check the config pls\n");
-            goto err;      
+            std::string ip = xml.GetData();
+            xml.FindElem("UpMgrBackIp");
+            std::string backIp = xml.GetData();
+
+            ut_dbg("load mgr ip from %s and ip is %s \n",strNetConfig.c_str(),ip.c_str());
+            fflush(stdout);
+            if( ip.empty())
+            {
+                ut_err("there is no <UpMgrIp> in the xml config file\n");
+                fflush(stdout);
+                return false;
+            }
+            rHandle = cli->create_rpc_proxy(RPC_SERVER_NAME,(char*)(ip.c_str()), RPC_PORT);
+            if(rHandle == NULL || !rHandle->isValidate)
+            {
+                ut_dbg("can not connect server %s with service %s at port %d\n", ip.c_str(), RPC_SERVER_NAME, RPC_PORT);
+                ut_dbg("try to connect back server  %s\n", backIp.c_str());
+                rHandle = cli->create_rpc_proxy(RPC_SERVER_NAME,(char*)(backIp.c_str()), RPC_PORT);
+                if (!rHandle || !rHandle->isValidate)
+                {
+                    ut_dbg("can not connect server %s with service %s at port %d\n", backIp.c_str(), RPC_SERVER_NAME, RPC_PORT);            
+                    ut_dbg("try others\n");
+                }
+                else
+                {
+                    ret = true;
+                    break;
+                }
+            }
+            else
+            {
+                ret = true;
+                break;
+            }
         }
     }
-    
+    if (ret == false)
+    {
+        ut_dbg("check the config pls\n");
+    }
     return  rHandle->isValidate;
 err:
     fflush(stdout);
@@ -361,9 +388,13 @@ int FiUpdateAssistant::update()
     FiGetCurDir(sizeof(buf),buf);
     std::string strNetConfig =buf;   
 
-    while( (ret ==0)&& trycnt<5 )
+    while( (ret ==0)&& trycnt<2 )
     {
         trycnt++;
+        if (trycnt > 1)
+        {
+            ut_dbg("Attempt to connect server [%d]\n" , trycnt);
+        }
         MAKE_RPC_INVOKE(rHandle,StartupUpdate(PInfo, which, netVer.version , netVer.date, netVer.patchNo, outfilename,size,_ref),ret);
     }
     if( ret == 0)
@@ -475,9 +506,13 @@ int FiUpdateAssistant::downloadFile(const char *ip, const char *srcName, const c
             goto netcrash;
         }
     }
-    while( (ret ==0)&& trycnt<5 )
+    while( (ret ==0)&& trycnt<2 )
     {
         trycnt++;
+        if (trycnt > 1)
+        {
+            ut_dbg("Attempt to connect server [%d]\n" , trycnt);
+        }
         MAKE_RPC_INVOKE(rHandle,starupTrans(srcName, size, fileRef),ret);
     }
     if( ret == 0)
@@ -510,9 +545,13 @@ int FiUpdateAssistant::downloadFile(const char *ip, const char *srcName, const c
         bfstream_var bfs;
         ::CORBA::Long checknum;
 
-        while( (ret == 0)&& trycnt<5 )
+        while( (ret == 0)&& trycnt<2 )
         {
             trycnt++;
+            if (trycnt > 1)
+            {
+                ut_dbg("Attempt to connect server [%d]\n" , trycnt);
+            }            
             MAKE_RPC_INVOKE(rHandle, transFile(fileRef, pack_expect, bfs, checknum, flag), ret);
         }
         if( ret ==0 )
@@ -578,6 +617,7 @@ int FiUpdateAssistant::handl_input(const char* filename)
     char buff[256];
 
     ut_dbg("begin translate file:%s\n",filename);
+    fflush(stdout);
     if( pack_expect==1 )
     {
         FiGetCurDir(sizeof(buff),buff);
@@ -630,12 +670,17 @@ int FiUpdateAssistant::handl_input(const char* filename)
         int ret =0;
         bfstream_var bfs;
         ::CORBA::Long checknum;
-
-        while( (ret ==0)&& trycnt<5 )
+ /* :TODO:2015/10/15 15:21:32:hwt:  trycnt = 5 改为 trycnt = 1，受系统TCP keeplive影响，一次默认为75s，5次时间太长,会导致迟迟没有更新 10 分钟*/
+        while( (ret == 0)&& trycnt<2 )
         {
             trycnt++;
+            if (trycnt > 1)
+            {
+                ut_dbg("Attempt to connect server pack_expect[%d][%d]\n" ,pack_expect, trycnt);
+            }
             MAKE_RPC_INVOKE(rHandle,TranslateFile(_ref,pack_expect,bfs,checknum,flag),ret);
         }
+ /* :TODO:End---  */
         if( ret ==0 )
         {
             ut_dbg("network crash,stopping update\n");
@@ -1842,7 +1887,10 @@ int FiUpdateAssistant::UpdateVersionFile()
 {
     newerdate = netVer.date;
     newerver  = netVer.version;
-
+    if (which == MAS_SRV)
+    {
+        return 0;
+    }
     if (newerdate == "" || newerver =="")
     {
         return 0;

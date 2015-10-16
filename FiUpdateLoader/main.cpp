@@ -112,16 +112,19 @@ int main(int argc, char **argv)
 	FiGetCurDir(sizeof(_path),_path);
 	std::string str(_path);
 	str+="FiUpdateLoader.log";
-	freopen(str.c_str(),"w",stdout);
-	freopen(str.c_str(),"w",stderr);
+	freopen(str.c_str(),"a",stdout);
+	freopen(str.c_str(),"a",stderr);
 
 	FiEvent evnt;
     char pathConf[256];
     XmlParserEngine xmlParser;
-    std::string serverIp[2]={"",""};
+    //std::string serverIp[2]={"",""};
+    vector<string>serverIp;
+    vector<unsigned long>::iterator it;
     std::string localIp;    
     int count = 2;
     int nodeSeq;
+    int size=0;
     vector<unsigned long> vecIpAddr;
     CMarkup xmlmaker, xmlloader;
     
@@ -131,8 +134,8 @@ int main(int argc, char **argv)
     {
         ut_err("update config : network.xml is not exist. try to auto generate.\n");
     }
-    //linux 1. get local ip from bootip,2.get serverip from FicsConfig.xml 
-#ifndef WIN32
+    //linux 1. get local ip from ifconfig & ficsConfig.xml,2.get serverip from FicsConfig.xml 
+//#ifndef WIN32
 
     if (getCurLocalIp(localIp) < 0)
     {
@@ -146,15 +149,30 @@ int main(int argc, char **argv)
         goto err;
     }
 //    unsigned long tmp = vecIpAddr[0];
-    serverIp[0] = inet_ntoa(*((struct in_addr*)&vecIpAddr[0]));
-    serverIp[1] = inet_ntoa(*((struct in_addr*)&vecIpAddr[1]));
+    for (it = vecIpAddr.begin(); it != vecIpAddr.end(); it++)
+    {
+        string  ip = inet_ntoa(*((struct in_addr*)&(*it)));
+        serverIp.push_back(ip);
+    }
+//    serverIp[0] = inet_ntoa(*((struct in_addr*)&vecIpAddr[0]));
+//    serverIp[1] = inet_ntoa(*((struct in_addr*)&vecIpAddr[1]));
     xmlmaker.SetDoc("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n");     
     xmlmaker.AddElem("UpMgrConfig");
     xmlmaker.IntoElem();
     xmlmaker.AddElem("LocalIP", localIp.c_str());
-    xmlmaker.AddElem("UpMgrIp", serverIp[0].c_str());
-    xmlmaker.AddElem("UpMgrBackIp", serverIp[1].c_str());
+    size = serverIp.size();
+    for (int i=0; i<size; i+=2)
+    {
+        xmlmaker.AddElem("UpMgrIp", serverIp[i].c_str());
+        xmlmaker.AddElem("UpMgrBackIp", serverIp[i+1].c_str());
+    }
+//    xmlmaker.AddElem("UpMgrIp", serverIp[0].c_str());
+//    xmlmaker.AddElem("UpMgrBackIp", serverIp[1].c_str());
+#ifdef WIN32
+    if (!xmlmaker.Save(_T("../config/network.xml")))
+#else
     if (!xmlmaker.Save("../config/network.xml"))
+#endif
     {
         ut_err("generate network.xml fail\n");
     }
@@ -162,7 +180,7 @@ int main(int argc, char **argv)
     {
         ut_dbg("generate network.xml success\n");
     }
-#endif
+//#endif
     FiUpdateAssistant::getinstance()->set(&evnt);
     FiUpdateAssistant::getinstance()->startup();
     FiUpdateAssistant::getinstance()->ConnectUpMgr();
@@ -205,20 +223,20 @@ int main(int argc, char **argv)
             fflush(stdout);
         }
         // 1.query 2.compare 3.download 4.auth..  5.update
-		unsigned int sleeptime = 1000*60;
-		if (ret == 20||ret == 30)
-		{
-			sleeptime = 1000*10;
-		}
-#ifdef WIN32
-        Sleep(sleeptime);
-#else
-        sleep(sleeptime/1000);
-#endif        
+		unsigned int sleeptime = 1000*30;
+  
         //evnt.wait();
         if( FiUpdateAssistant::getinstance()->IsUpFinished() )
         {
             exit(2);//restart by monitor_update.py
+        }
+        else
+        {
+#ifdef WIN32
+            Sleep(sleeptime);
+#else
+            sleep(sleeptime/1000);
+#endif
         }
     }while(true);
     

@@ -330,7 +330,7 @@ void* recvHelloHandler(void *params)
         {
             ut_err("recvfrom()\n");
         }
-        if (strcmp(buff.action, "action:hello") != 0 && buff.endPoint.type != LEADER)
+        if (strcmp(buff.action, "action:hello") != 0 || buff.endPoint.type != LEADER)
         {
             continue;
         }
@@ -515,11 +515,13 @@ int main(int argc,char** argv)
     if (stat("../download", &st) == -1)
     {
         ut_err("stat error num :%d\n", errno);
-        return -2;
     }
-    if (!S_ISDIR(st.st_mode))
+    else
     {
-        system("rm ../download -rf");
+        if (!S_ISDIR(st.st_mode))
+        {
+            system("rm ../download -rf");
+        }
     }
     system("mkdir -p ../download");
 	if (pthread_attr_init(&attr[0]) < 0)

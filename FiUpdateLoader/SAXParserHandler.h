@@ -188,8 +188,8 @@ public:
              xmlLoader.IntoElem();
              if (xmlLoader.FindElem("reboot"))
              {
-                 xmlLoader.IntoElem();
-                 if( xmlLoader.GetData() =="")
+                 //xmlLoader.IntoElem();
+                 if( xmlLoader.GetData() =="0")
                  {
                      upack.bReboot = false;
                  }
@@ -198,7 +198,7 @@ public:
                      upack.bReboot = true;
                  }
 
-                 xmlLoader.OutOfElem();
+                 //xmlLoader.OutOfElem();
              }
 
              xmlLoader.OutOfElem();
