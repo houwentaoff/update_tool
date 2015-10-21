@@ -1,0 +1,12 @@
+*.rar
+*.svn
+.svn
+*~
+*.swp
+*.out
+*.files
+tags
+*.dll
+*.sys
+*.exe
+*.back

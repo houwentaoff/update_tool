@@ -1079,12 +1079,12 @@ int FiUpdateAssistant::svc()
     FiWriteFile(fpinstall,(void*)(killself.c_str()),killself.length());
     FiWriteFile(fpinstall,(void*)(killself.c_str()),killself.length());
     FiWriteFile(fpinstall,(void*)(killself.c_str()),killself.length());
-    FiWriteFile(fpinstall,(void*)("taskkill /f /t /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /t /im Fiwatchdog.exe \r\n"));
+    FiWriteFile(fpinstall,(void*)("taskkill /f  /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /t /im Fiwatchdog.exe \r\n"));
 	FiWriteFile(fpinstall,(void*)("taskkill /f /t /im scm.exe \r\n"),strlen("taskkill /f /t /im scm.exe \r\n"));
 	FiWriteFile(fpinstall,(void*)("taskkill /f /t /im fitool.exe \r\n"),strlen("taskkill /f /t /im fitool.exe \r\n"));
     FiWriteFile(fpuninstall,(void*)(killself.c_str()),killself.length());
     FiWriteFile(fpuninstall,(void*)(killself.c_str()),killself.length());
-    FiWriteFile(fpuninstall,(void*)("taskkill /f /t /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /t /im Fiwatchdog.exe \r\n"));
+    FiWriteFile(fpuninstall,(void*)("taskkill /f  /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /t /im Fiwatchdog.exe \r\n"));
 	FiWriteFile(fpuninstall,(void*)("taskkill /f /t /im scm.exe \r\n"),strlen("taskkill /f /t /im scm.exe \r\n"));
 	FiWriteFile(fpuninstall,(void*)("taskkill /f /t /im fitool.exe \r\n"),strlen("taskkill /f /t /im fitool.exe \r\n"));
 	std::string delUpdate  = "del ";

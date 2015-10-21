@@ -90,6 +90,11 @@ public:
 
 		return 0;
 	}
+    int shutdown()
+    {
+        orb->shutdown(0);
+        return 0;
+    }
 
 protected:
 	int init(unsigned short port=2815)
@@ -154,6 +159,11 @@ protected:
 
 		mgr->activate();
 		orb->run();//make the servant peer run.event loop.
+ /* :TODO:2015/10/19 10:26:39:hwt:  Fix 
+terminate called after throwing an instance of 'omni_thread_fatal' ?
+  * */
+		orb->destroy();
+ /* :TODO:End---  */
 		return 0;
 
 	}

@@ -7,6 +7,8 @@
 #ifdef WIN32
 #include <Windows.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <direct.h>
 // #ifdef  _WIN32_WINNT
 // #undef _WIN32_WINNT
 // #define _WIN32_WINNT 0x0501
@@ -31,7 +33,7 @@ using namespace std;
     limit.rlim_max = RLIM_INFINITY;\
     setrlimit(RLIMIT_CORE, &limit);\
 }
-
+//check if FicsConfig changed restart FiUpdateLoader
 int main(int argc, char **argv)
 {
 	char _path[260];
@@ -110,11 +112,25 @@ int main(int argc, char **argv)
     FiEnableCoreDumps();
 #endif
 	FiGetCurDir(sizeof(_path),_path);
+#ifdef WIN32
+    if (0 == _chdir(_path)) 
+#else
+    if (0 == chdir(_path))
+#endif
+        
+    {
+        ut_dbg("change cur dir success\n");
+    }
+    else
+    {
+        ut_err("change cur dir fail\n");
+    }
+       
 	std::string str(_path);
 	str+="FiUpdateLoader.log";
 	freopen(str.c_str(),"a",stdout);
 	freopen(str.c_str(),"a",stderr);
-
+	ut_dbg ("path %s\n", str.c_str());
 	FiEvent evnt;
     char pathConf[256];
     XmlParserEngine xmlParser;
@@ -130,6 +146,9 @@ int main(int argc, char **argv)
     
     FiGetCurDir(sizeof(pathConf),pathConf);
     strcat(pathConf, "../config/network.xml");
+
+	ut_dbg ("path2 %s\n", pathConf);
+
     if (!FiIsExistFile(pathConf))
     {
         ut_err("update config : network.xml is not exist. try to auto generate.\n");

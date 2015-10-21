@@ -40,6 +40,7 @@
     setrlimit(RLIMIT_CORE, &limit);\
 }
 /* The name of this program. */
+static FiRpcSrv<FiUpdateMgrImpl> *UpdateSrv = NULL;   
 static const char* program_name;
 static struct option long_options[] = {
     {"master", 0, NULL, 'm'}, 
@@ -240,6 +241,7 @@ void *selfUpdate(void *params)
     }
     return NULL;
 exit:
+     UpdateSrv->shutdown();
     exit(0);
     return NULL;
 }
@@ -475,7 +477,7 @@ int main(int argc,char** argv)
 	char _path[260]; 
     FiEvent evnt;
     
-    FiRpcSrv<FiUpdateMgrImpl> *UpdateSrv = NULL;    
+ 
 // 	char buf[100];
 // 	FiGetCurDir(sizeof(buf),buf);
 // 	std::string strNetConfig =buf;
@@ -496,7 +498,18 @@ int main(int argc,char** argv)
 // 
 // 		xmlLoader.OutOfElem();
 // 	}
-
+	FiGetCurDir(sizeof(_path),_path);
+	std::string str(_path);
+	str+="FiUpdateMgr.log";
+	freopen(str.c_str(),"a",stdout);
+    if (0 == chdir(_path))
+    {
+        ut_dbg("change cur dir success\n");
+    }
+    else
+    {
+        ut_err("change cur dir fail\n");
+    }    
 #ifndef WIN32
     FiEnableCoreDumps();
     pthread_t tid[3];
@@ -555,13 +568,10 @@ int main(int argc,char** argv)
     }
 #endif
 
-	FiGetCurDir(sizeof(_path),_path);
-	std::string str(_path);
-	str+="FiUpdateMgr.log";
-	freopen(str.c_str(),"w",stdout);
+
     UpdateSrv = new FiRpcSrv<FiUpdateMgrImpl>(RPC_PORT, RPC_SERVER_NAME, (char*)(NULL));
 	UpdateSrv->run();
-#if 1	
+#if 0	
 	evnt.wait();
 #else
     do
