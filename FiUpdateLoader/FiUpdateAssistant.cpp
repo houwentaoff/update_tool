@@ -427,12 +427,22 @@ int FiUpdateAssistant::queryPatchs(patchSet_t *patchs)
 {
     int ret =0;
     string version;
-
+    version_t curVer;
+    
     if (!patchs)
     {
         ut_err("patchs is null\n");
         ret = -1;
         goto err;
+    }
+    if (0 != getLocalVersion(curVer))
+    {
+        ut_err("get local version fail\n");
+        version = "";
+    }
+    else
+    {
+        version = curVer.version;
     }
 
     MAKE_RPC_INVOKE(rHandle, queryPatchs(version, patchs), ret);

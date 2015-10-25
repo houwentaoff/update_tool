@@ -2,7 +2,7 @@
 #define FI_QUERY_UPDATE_IDL_H
 
 typedef sequence<octet> bfstream;
-typedef long patchSet_t[100]; //应下载的补丁集合
+typedef long patchSet_t[100][2]; //应下载的补丁集合 [0] ->patchNo [1] -> date
 enum e{FISHARE_MDS,FISHARE_CLIENT};
 //enum{EWINDOWS,ELINUX,EMAC};
 struct PlatformInfoEx

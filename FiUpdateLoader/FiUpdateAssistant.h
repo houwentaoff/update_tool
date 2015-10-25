@@ -106,6 +106,7 @@ private:
 
 	PlatformInfoEx    PInfo;
 	CORBA::LongLong          _ref;
+public:
     version_t localVer;
     version_t netVer;
     

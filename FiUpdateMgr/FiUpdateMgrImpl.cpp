@@ -12,12 +12,20 @@ FiUpdateMgrImpl::FiUpdateMgrImpl()
 FiUpdateMgrImpl::~FiUpdateMgrImpl()
 {
 }
+/**
+ * @brief   根据客户端的版本信息，返回客户端需要的版本 集合(链表)
+ *
+ * @param version
+ * @param patchs
+ *
+ * @return 
+ */
 ::CORBA::Long queryPatchs(const char* version, ::patchSet_t patchs)
 {
     //version: cur ver   fics_v1.0.0_2015.10.16_4005
     //paths cur pat num set
     //need to set value  patshs
-    long patchs[100];
+//    long patchs[100];
     int patch = 0;//读取patch_version文件 4005
     int baseVer = 0;
     int patchVer = 0;
@@ -27,6 +35,9 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
     int tmpVer = 0;
     char cmdBuf[512];
     char tmppath[256]={0};
+    char *pos;
+    char *date;
+    char *fileName;
     int r=0;
     /*-----------------------------------------------------------------------------
      *  0. scan fics_v1.0.0_2015.09.12_4000.zip -- fics_v1.0.0_2015.10.16_4005.zip
@@ -44,7 +55,7 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
     int tmpVer = baseVer * BASEINTERVAL;
     for (i = 0; i<=patchVer; i++)
     {
-        sprintf(fileNameRE, "%sfics_%s_*_%d.zip", _PATH_PKG_DL, curVer.version, tmpVer+i);
+        sprintf(fileNameRE, "%sfics_%s_*_%d.zip", _PATH_PKG_DL, curVer.version, tmpVer+i);//reg skip date
         sprintf(cmdBuf, "find %s -name \'%s\'", _PATH_PKG_DL, fileNameRE);
         if (NULL == (fp = popen(cmdBuf, "r")))
         {
@@ -54,12 +65,35 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
         r = fscanf(fp, "%[^\n]", tmppath);
         if (r == 1)
         {
-            patchs[i] = 1;
+            if (!(fileName = basename(tmppath)))
+            {
+                pclose(fp);
+                continue;
+            }
+            if (!(pos = strstr(fileName, curVer.version)))
+            {
+                pclose(fp);
+                continue;
+            }
+            if (!(pos = strchr(pos, '_')))
+            {
+                pclose(fp);
+                continue;
+            }
+            date = pos + 1;
+            if (!(pos = strchr(date, '_')))
+            {
+                pclose(fp);
+                continue;
+            }
+            *pos = 0;
+            patchs[i][0] = 1;
+            patchs[i][1] = date2Long(date);
         }
         pclose(fp);
     }
 
-    return 1;
+    return 0;
 }
 ::CORBA::Long FiUpdateMgrImpl::QueryCurVersion(const char* inversion, const char* indate, 
 											   const char* inpatchno, ::CORBA::String_out version,
