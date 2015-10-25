@@ -23,6 +23,7 @@ public:
 		::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag) ;
     virtual ::CORBA::Long starupTrans(const char* fileName, ::CORBA::Long& size, ::CORBA::LongLong& fileRef);
     virtual ::CORBA::Long transFile(::CORBA::LongLong fileRef, ::CORBA::Long packid, ::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag);
+    virtual ::CORBA::Long queryPatchs(const char* version, ::patchSet_t patchs);
     FiEvent                               evnt;
 };
 

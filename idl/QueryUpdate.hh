@@ -163,6 +163,52 @@ private:
   bfstream_out& operator=(const bfstream_var&);
 };
 
+typedef ::CORBA::Long patchSet_t[100];
+typedef ::CORBA::Long patchSet_t_slice;
+
+inline patchSet_t_slice* patchSet_t_alloc() {
+  return new patchSet_t_slice[100];
+}
+
+inline patchSet_t_slice* patchSet_t_dup(const patchSet_t_slice* _s) {
+  if (!_s) return 0;
+  patchSet_t_slice* _data = patchSet_t_alloc();
+  if (_data) {
+    for (_CORBA_ULong _0i0 = 0; _0i0 < 100; _0i0++){
+      
+      _data[_0i0] = _s[_0i0];
+
+    }
+
+  }
+  return _data;
+}
+
+inline void patchSet_t_copy(patchSet_t_slice* _to, const patchSet_t_slice* _from){
+  for (_CORBA_ULong _0i0 = 0; _0i0 < 100; _0i0++){
+    
+    _to[_0i0] = _from[_0i0];
+
+  }
+
+}
+
+inline void patchSet_t_free(patchSet_t_slice* _s) {
+  delete [] _s;
+}
+
+class patchSet_t_copyHelper {
+public:
+  static inline patchSet_t_slice* alloc() { return ::patchSet_t_alloc(); }
+  static inline patchSet_t_slice* dup(const patchSet_t_slice* p) { return ::patchSet_t_dup(p); }
+  static inline void free(patchSet_t_slice* p) { ::patchSet_t_free(p); }
+};
+
+typedef _CORBA_Array_Fix_Var<patchSet_t_copyHelper,patchSet_t_slice> patchSet_t_var;
+typedef _CORBA_Array_Fix_Forany<patchSet_t_copyHelper,patchSet_t_slice> patchSet_t_forany;
+
+typedef patchSet_t_slice* patchSet_t_out;
+
 enum e { FISHARE_MDS, FISHARE_CLIENT /*, __max_e=0xffffffff */ };
 typedef e& e_out;
 
@@ -258,6 +304,7 @@ public:
   ::CORBA::Long TranslateFile(::CORBA::LongLong ref, ::CORBA::Long packid, ::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag);
   ::CORBA::Long starupTrans(const char* fileName, ::CORBA::Long& size, ::CORBA::LongLong& fileRef);
   ::CORBA::Long transFile(::CORBA::LongLong fileRef, ::CORBA::Long packid, ::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag);
+  ::CORBA::Long queryPatchs(const char* version, ::patchSet_t patchs);
 
   inline _objref_FiUpdateMgr()  { _PR_setobj(0); }  // nil
   _objref_FiUpdateMgr(omniIOR*, omniIdentity*);
@@ -296,6 +343,7 @@ public:
   virtual ::CORBA::Long TranslateFile(::CORBA::LongLong ref, ::CORBA::Long packid, ::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag) = 0;
   virtual ::CORBA::Long starupTrans(const char* fileName, ::CORBA::Long& size, ::CORBA::LongLong& fileRef) = 0;
   virtual ::CORBA::Long transFile(::CORBA::LongLong fileRef, ::CORBA::Long packid, ::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag) = 0;
+  virtual ::CORBA::Long queryPatchs(const char* version, ::patchSet_t patchs) = 0;
   
 public:  // Really protected, workaround for xlC
   virtual _CORBA_Boolean _dispatch(omniCallHandle&);

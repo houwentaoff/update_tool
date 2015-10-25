@@ -377,6 +377,8 @@ int compareVersion(version_t *local, version_t *net)
     int newDateDay      = 0;
     int localpatchno    = 0;
     int newerpatchno    = 0;
+    string localHash    = 0;
+    string newerHash    = 0;
 
     if (!local || !net)
     {
@@ -386,9 +388,10 @@ int compareVersion(version_t *local, version_t *net)
     sscanf(local->version, "v%d.%d.%d", &localFirstVer, &localSecondVer, &localLastVer);
     sscanf(local->patchNo, "%d", &localpatchno);
     sscanf(local->date, "%d.%02d.%02d", &localDateYear, &localDateMoth, &localDateDay);
-    ut_dbg("the local version:%s date:%s local %d.%d.%d date:%d.%d%d patch:%d\n",
+    localHash = local->hash;
+    ut_dbg("the local version:%s date:%s local %d.%d.%d date:%d.%d%d patch:%d\n hash:%s\n",
      local->version, local->date ,localFirstVer,localSecondVer,localLastVer,
-        localDateYear,localDateMoth,localDateDay,localpatchno);
+        localDateYear,localDateMoth,localDateDay,localpatchno, localHash.c_str());
     fflush(stdout);
     if (0 == localFirstVer)
     {
@@ -397,20 +400,37 @@ int compareVersion(version_t *local, version_t *net)
     sscanf(net->patchNo, "%d", &newerpatchno);
     sscanf(net->version,"v%d.%d.%d",&newFirstVer,&newSecondVer,&newLastVer);
     sscanf(net->date,"%d.%02d.%02d",&newDateYear,&newDateMoth,&newDateDay);
+    newerHash = net->hash;
 
 //    newerver = version;
 //    newerdate = date;
 //    std::string newerno = patchno;
 
-    ut_dbg("from the net(svr/cli) version:%s date:%s net %d.%d.%d date:%d.%d%d patch:%d\n"
+    ut_dbg("from the net(svr/cli) version:%s date:%s net %d.%d.%d date:%d.%d%d patch:%d hash:%s\n"
         , net->version, net->date,newFirstVer,newSecondVer,newLastVer,
-        newDateYear,newDateMoth,newDateDay,newerpatchno);
+        newDateYear,newDateMoth,newDateDay,newerpatchno,newerHash.c_str());
     fflush(stdout);
     ret = (localFirstVer*10000+localSecondVer*100+localLastVer) - (newFirstVer*10000+newSecondVer*100+newLastVer);
+ /* :TODO:2015/10/21 15:58:00:hwt:  忽略时间只比较版本号和补丁号,已经hash值*/
+#if 0
     if (ret == 0)
     {
         ret = (localDateYear*10000+localDateMoth*100+localDateDay) - (newDateYear*10000+newDateMoth*100+newDateDay);
     }
+#else
+    if (ret == 0)
+    {
+        ret = localpatchno - newerpatchno;
+    }
+    if (ret == 0)
+    {
+        if (localHash != newerHash)
+        {
+            ret = -1;//上传过去的补丁包，当前版本没有更新,
+        }
+    }
+#endif
+ /* :TODO:End---  */
     
     return ret;
 err:

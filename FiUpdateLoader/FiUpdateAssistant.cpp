@@ -423,6 +423,30 @@ int FiUpdateAssistant::update()
     handl_input(this->filename.c_str());
     return 20;  
 }
+int FiUpdateAssistant::queryPatchs(patchSet_t *patchs)
+{
+    int ret =0;
+    string version;
+
+    if (!patchs)
+    {
+        ut_err("patchs is null\n");
+        ret = -1;
+        goto err;
+    }
+
+    MAKE_RPC_INVOKE(rHandle, queryPatchs(version, patchs), ret);
+    if( ret ==0 )
+    {
+        ut_dbg("network crash,check the config pls\n");
+        fflush(stdout);
+        NOTIFY_UPDATELAOAD_FINISH_FAIL();
+        return -2;
+    }
+    return ret;
+err:
+    return ret;
+}
 int FiUpdateAssistant::QueryCurrentVersion(version_t *version)
 {
     char buf[100];
@@ -1556,6 +1580,7 @@ int FiUpdateAssistant::svc()
     }
 
     UpdateVersionFile();
+    addVer2His(newVer, HISTORY);
     chdir(installpath.c_str());//set current dir
     
     char clean[200];

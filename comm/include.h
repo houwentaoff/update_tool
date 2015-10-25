@@ -23,6 +23,7 @@
 #define RPC_SERVER_NAME        "FiUpdateMgr"
 #define LEN_VERSION            30/*  */
 #define LEN_BUF                 100/*  */
+#define HASH_LEN                200
 #ifdef WIN32
 #define _PATH_VERSION        "../patch_version"
 #else
@@ -37,6 +38,11 @@ typedef struct
     char version[LEN_VERSION];
     char date[LEN_VERSION];
     char patchNo[LEN_VERSION];
+    union 
+    {
+        char hash[HASH_LEN];
+        char reserved[HASH_LEN];
+    }reserved;
 }version_t;
 typedef enum
 {

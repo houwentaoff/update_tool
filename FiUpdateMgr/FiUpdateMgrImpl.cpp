@@ -12,6 +12,55 @@ FiUpdateMgrImpl::FiUpdateMgrImpl()
 FiUpdateMgrImpl::~FiUpdateMgrImpl()
 {
 }
+::CORBA::Long queryPatchs(const char* version, ::patchSet_t patchs)
+{
+    //version: cur ver   fics_v1.0.0_2015.10.16_4005
+    //paths cur pat num set
+    //need to set value  patshs
+    long patchs[100];
+    int patch = 0;//读取patch_version文件 4005
+    int baseVer = 0;
+    int patchVer = 0;
+    int i=0;
+    char fileNameRE[512]={0};//Regular Expression
+    version_t curVer;
+    int tmpVer = 0;
+    char cmdBuf[512];
+    char tmppath[256]={0};
+    int r=0;
+    /*-----------------------------------------------------------------------------
+     *  0. scan fics_v1.0.0_2015.09.12_4000.zip -- fics_v1.0.0_2015.10.16_4005.zip
+     *  1. get base num, get patchNum
+     *  2. scan a
+     *-----------------------------------------------------------------------------*/
+    if (getLocalVersion(curVer) != 0)
+    {
+        ut_err("get local ver fail\n");
+        return 1;
+    }
+    patch = atoi(curVer.patchNo);
+    baseVer  = getCurBaseVer(patch);//40
+    patchVer = getCurPatchVer(patch)//5
+    int tmpVer = baseVer * BASEINTERVAL;
+    for (i = 0; i<=patchVer; i++)
+    {
+        sprintf(fileNameRE, "%sfics_%s_*_%d.zip", _PATH_PKG_DL, curVer.version, tmpVer+i);
+        sprintf(cmdBuf, "find %s -name \'%s\'", _PATH_PKG_DL, fileNameRE);
+        if (NULL == (fp = popen(cmdBuf, "r")))
+        {
+            ut_err("popen error[%d]\n", errno);
+            return 2;
+        }
+        r = fscanf(fp, "%[^\n]", tmppath);
+        if (r == 1)
+        {
+            patchs[i] = 1;
+        }
+        pclose(fp);
+    }
+
+    return 1;
+}
 ::CORBA::Long FiUpdateMgrImpl::QueryCurVersion(const char* inversion, const char* indate, 
 											   const char* inpatchno, ::CORBA::String_out version,
 											   ::CORBA::String_out date, ::CORBA::String_out patchno

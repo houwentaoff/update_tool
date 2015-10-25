@@ -225,13 +225,31 @@ int main(int argc, char **argv)
         if (ret < 0)
         {
             //update
+
+            /*-----------------------------------------------------------------------------
+             *  1. ask which pkg should be downed.
+             *  2. compare local pkg
+             *  3. down pkg that I dont have
+             *  4. update (patch_version, history, patch)
+             *-----------------------------------------------------------------------------*/
+            checkAndDownPkg();
+
             FiUpdateAssistant::getinstance()->update();
         }
         else if (ret > 0 && ret != 1000000)
         {
             //rollback
+
+            /*-----------------------------------------------------------------------------
+             *  1. ask which pkg should be downed.
+             *  2. compare local pkg
+             *  3. down pkg that I dont have
+             *  4. rollback
+             *-----------------------------------------------------------------------------*/
+            checkAndDownPkg();
+#if 0
             FiUpdateAssistant::getinstance()->update();
-#if 0            
+#else             
             FiUpdateAssistant::getinstance()->RollBack(
             netVer.version, netVer.date, netVer.patchNo);
 #endif

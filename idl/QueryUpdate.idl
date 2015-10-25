@@ -2,6 +2,7 @@
 #define FI_QUERY_UPDATE_IDL_H
 
 typedef sequence<octet> bfstream;
+typedef long patchSet_t[100]; //应下载的补丁集合
 enum e{FISHARE_MDS,FISHARE_CLIENT};
 //enum{EWINDOWS,ELINUX,EMAC};
 struct PlatformInfoEx
@@ -22,7 +23,8 @@ interface FiUpdateMgr
     long TranslateFile(in long long ref, in long packid, out bfstream bfs,out long checknum,out long flag);
     //trans any(/download) file 
     long starupTrans(in string fileName, out long size,out long long fileRef);//1. open file 2. return size of file 3. return file handle 
-    long transFile(in long long fileRef, in long packid, out bfstream bfs,out long checknum,out long flag);
+    long transFile(in long long fileRef, in long packid, out bfstream bfs,out long checknum,out long flag);//1.starupTrans 2.transFile
+    long queryPatchs(in string version, out patchSet_t patchs);//query cur patchs in server.
     
 };
 
