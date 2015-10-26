@@ -60,6 +60,7 @@ int getCurPatchVer(int patch)
 int genHashValueFromDir(vector<string> & verList, string & hashValue)
 {
 //暂时不用
+    return 0;
 }
 int genHashFromHis(const char *path, string & hashValue)
 {
@@ -153,26 +154,63 @@ bool checkAllpatchIsIn(const int patchSet[BASEINTERVAL], int (*need2down)[])
 {
 
 }
+int mkVer(int baseVer, int patchVer)
+{
+    return (baseVer*BASEINTERVAL + patchVer);
+}
+int itoa(int inum, string &str)
+{
+    char asicBuf[36] = {0};
+    long num = 0;
+    int i=0;
+
+    while (inum)
+    {
+        num = inum % 10;
+        asicBuf[i++] = '0' + num;
+        inum /= 10;
+    }
+    asicBuf[i] = '\0';//01504102
+    while (i--)
+    {
+        str += asicBuf[i];
+    }
+    return 0;    
+}
+/**
+ * @brief 下载loss的包 version -> netVer ;date -> lossPatchs[i][1] fics_v1.0.0_2015.10.10_4005
+ *
+ * @param netVer
+ * @param lossPatchs
+ *
+ * @return 
+ */
 int downLossPatch(version_t *netVer, patchSet_t *lossPatchs)
 {
     int i=0;
     int ret = 0;
-    char srcFile[512]={0};
+//    char srcFile[512]={0};
     char dstFile[512]={0};
+    string tmpDate;
+    string curType;
 
-    sprintf(srcFile, "/sobey/fics/download/fics_%s_*_", netVer->version);//正则 re
-    sprintf(dstFile, "/sobey/fics/update/fics_%s_*_", netVer->version);//正则 re
+//    sprintf(srcFile, "/sobey/fics/download/fics_%s_", netVer->version);//正则 re
+//    sprintf(dstFile, "/sobey/fics/update/fics_%s_", netVer->version);//正则 re
     for (i =0; i<=BASEINTERVAL; i++)
     {
-        if (lossPatchs[i]!=0)
+        if (lossPatchs[i][0]!=0)
         {
-            sprintf(srcFile+strlen(srcFile), "%d", getCurBaseVer(netVer->patchNo)*BASEINTERVAL + i);
-            sprintf
+#if 1
+            ret = FiUpdateAssistant::getinstance()->downLossPkg(netVer, lossPatchs[i][1], mkVer(getCurBaseVer(netVer->patchNo), i));//down over
+#else
             ret = FiUpdateAssistant::getinstance()->downloadFile(ip, srcFile, dstFile);
+#endif
+            long2Date(lossPatchs[i][1], tmpDate);//set to str date  
+            sprintf(dstFile, "fics_%s_%s_%d", netVer->version, tmpDate.c_str(), mkVer(getCurBaseVer(netVer->patchNo), i));//正则 re
             if (ret == 0)
             {
-                ut_dbg("download file %s success\n", dstFile);
-                lossPatchs[i] = 0;
+                ut_dbg("download file %s %s success\n", dstFile);
+                lossPatchs[i][0] = 0;
             }
             else
             {
@@ -184,7 +222,7 @@ int downLossPatch(version_t *netVer, patchSet_t *lossPatchs)
     }
     i = 0;
     //check patch
-    while (lossPatchs[i++] && i<=BASEINTERVAL){};
+    while (lossPatchs[i++][0] && i<=BASEINTERVAL){};
     if (i != BASEINTERVAL)
     {
         ret = -2;
@@ -204,9 +242,9 @@ int patchs2str(patchSet_t *lossPatchs, string &set)
 
     for (i = 0; i<BASEINTERVAL; i++)
     {
-        if (lossPatchs[i] != 0)
+        if (lossPatchs[i][0] != 0)
         {
-            sprintf(buf, "%d", lossPatchs[i]);
+            sprintf(buf, "%d", lossPatchs[i][0]);
             set += buf;
             set += ",";
         }
@@ -257,8 +295,122 @@ bool matchRE(const char *src, const char *re)
     }
     return ret;
 }
+int getPkgList(char const * path, char const * prefix, char const *suffix, const char *version, vector<string> & pkgList)
+{
+    char cmdBuf[256] = {0};
+    char tmppath[256]={0};
+    char *fileName = NULL;
+
+    sprintf(cmdBuf, "find %s -name %s_%s_*.%s", path, prefix, version, suffix);
+    if (NULL == (fp = popen(cmdBuf, "r")))
+    {
+        ut_err("popen fail\n");
+        goto err;
+    }
+    while (fscanf(fp, "%[^\n]", tmppath) == 1)
+    {
+        fileName = basename(tmppath);
+        pkgList.push_back(fileName);
+    }
+    pclose(fp);
+    //find ./ -name 'server_v1.0.0_*.tar.gz'
+    return 0;
+err:
+    return -1;
+}
 int getDirList(char const * path, vector<string> & dirList)
 {
+    DIR*   dir=NULL; 
+    struct   dirent*   dirlist; 
+    struct   stat   filestat;
+
+    if( path == NULL)
+    {
+
+        ut_err("The path is empty!\n");
+        return -1;
+    }
+    dir = opendir(path);
+    if( dir == NULL)
+    {
+        ut_err("Open directory : %s failed errno:%d!\n",path,errno);
+        return -2;
+    }
+    while( (dirlist=readdir(dir))!= NULL )
+    {
+
+        if((dirlist->d_name[0]=='.'))
+        {
+            continue;
+        }
+        std::string filename =dirlist->d_name; 
+        std::string fullName=path;
+        fullName += "/";
+        fullName += dirlist->d_name;
+        stat(fullName.c_str(),&filestat);
+
+        if(S_ISDIR(filestat.st_mode) )
+        {
+//            filename +="/*";
+            dirList.push_back(filename);
+        }
+    }
+    closedir(dir);    
+    return 0;
+}
+/**
+ * @brief 将字符串 2014.05.10 转化为整数20140510
+ *
+ * @param date
+ *
+ * @return 
+ */
+long date2Long(const char *date)
+{
+    long ldate = 0;
+
+    if (!date)
+    {
+        ut_err("date is null\n");
+        return 0;
+    }
+    while (*date)
+    {
+        if (*date == '.')
+        {
+            continue;
+        }
+        ldate *= 10;
+        ldate +=*date - '0';
+        date++;
+    }
+    return ldate;
+}
+/**
+ * @brief 将整数 20140510转化为 2014.05.10
+ *
+ * @param ldate
+ * @param sdate
+ *
+ * @return 
+ */
+int long2Date(long ldate, string &sdate)
+{
+    char sdateBuf[36] = {0};
+    long num = 0;
+    int i=0;
+
+    while (ldate)
+    {
+        num = ldate % 10;
+        sdateBuf[i++] = '0' + num;
+        ldate /= 10;
+    }
+    sdateBuf[i] = '\0';//01504102
+    while (i--)
+    {
+        sdate += sdateBuf[i];
+    }
     return 0;
 }
 /**
@@ -290,7 +442,7 @@ int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatch
             patchNo = basePatch * BASEINTERVAL;
             //check local pkg /sobey/fics/update/fics_v1.0.0_2015.10.14(*)_4005 暂时只检查目录不检查tar.gz的压缩包 fics_v1.0.0_date(skip)_4005
             // i ==> patchNum
-            sprintf(tmpPath, "fics_%s_*_%d", version, patchNo+i);//正则
+            sprintf(tmpPath, "fics_%s_*_%d", version, patchNo+i);//正则 need to modify not fics_... client_...
             for (itr = pathDirList.begin(); itr!= pathDirList.end(); itr++)
             {
                 if (matchRE(itr->c_str(), tmpPath))
@@ -301,7 +453,8 @@ int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatch
             }
             if (!exist)//目录不存在 1. get dir name. 2. cmp file name
             {
-                lossPatchs[i] = 1;
+                lossPatchs[i][0] = 1;
+                lossPatchs[i][1] = serPatchs[i][1];
             }
         }
     }
@@ -339,4 +492,46 @@ int checkAndDownPkg()
         }
     }
     return 0;
+}
+/**
+ * @brief    server_v1.1.0_2015.09.29_4005_64_Linux2.6.tar.gz
+ *
+ * @param tarName
+ *
+ * @return 
+ */
+int getPatchNumFromName(char const *tarName)
+{
+    char *version;
+    char *date;
+    char *patchNo;
+    char patchNoBuf[64];
+    int ipatchNo = 0;
+    int i =0;
+
+    version = strchr(tarName, '_');
+    if (!version)
+    {
+        goto err;
+    }
+    date = strchr(version+1, '_');
+    if (!date)
+    {
+        goto err;
+    }
+    patchNo = strchr(date+1, '_');
+    if (!patchNo)
+    {
+        goto err;
+    }
+    patchNo++;
+    while (*patchNo != '_')
+    {
+        patchNoBuf[i++] = *patchNo;
+    }
+    patchNoBuf[i] = '\0';
+    ipatchNo = atoi(patchNoBuf);
+    return ipatchNo;
+err:
+    return -1;
 }

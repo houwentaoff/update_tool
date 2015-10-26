@@ -53,7 +53,7 @@ int getCurPatchVer(int patch);
  *
  * @return 
  */
-int genHashValueFromDir(vector<string> & verList, string & hashValue);
+int genHashValueFromDir(vector<string> & verList, string & hashValue);//not use
 /**
  * @brief  根据history文件产生hash值， hash值将放入patch_version文件，用于上传旧补丁更新版本库，而版本号并不发生改变 时通知客户端更新。
  *
@@ -80,7 +80,7 @@ int addVer2His(version_t *newVer, const char * path);
  *
  * @return 
  */
-int scanAllPatch(const char *path, vector<string> & verList);
+int scanAllPatch(const char *path, vector<string> & verList);//not use?
 
 /**
  * @brief 是否安装base版本
@@ -123,6 +123,93 @@ bool installBase(int baseNum);
  *
  * @return true: 不用下载 need2down为空 false:需要下载，并返回需要下载补丁号列表
  */
-bool checkAllpatchIsIn(const int patchSet[BASEINTERVAL], int (*need2down)[]);
+bool checkAllpatchIsIn(const int patchSet[BASEINTERVAL], int (*need2down)[]);//not use
+/**
+ * @brief 比较服务器的Patchs和本地的包进行对比，并将缺少的包标记到 lossPatchs中
+ * 代替了checkAllpatchIsIn
+ *
+ * @param serPatchs
+ * @param lossPatchs
+ *
+ * @return 
+ */
+int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatchs);
+/**
+ * @brief 对比服务器检查本地的包是否有缺少有则下载
+ *
+ * @return 
+ */
+int checkAndDownPkg();
+/**
+ * @brief 将整数 20140510转化为 2014.05.10
+ *
+ * @param ldate
+ * @param sdate
+ *
+ * @return 
+ */
+int long2Date(long ldate, string &sdate);
+/**
+ * @brief 将字符串 2014.05.10 转化为整数20140510
+ *
+ * @param date
+ *
+ * @return 
+ */
+long date2Long(const char *date);
+/**
+ * @brief获取指定目录的目录列表
+ *
+ * @param path
+ * @param dirList
+ *
+ * @return 
+ */
+int getDirList(char const * path, vector<string> & dirList);
+/**
+ * @brief      比较字符串和正则表达式是否匹配
+ *          如: fics_v1.0.0_2015.10.10_4005 用 fics_v1.0.0_*_4005 匹配成功 
+ * @param src   原始字符串
+ * @param re  对应的正则表达式
+ *
+ * @return 
+ */
+bool matchRE(const char *src, const char *re);
+/**
+ * @brief 下载loss的包 version -> netVer ;date -> lossPatchs[i][1] fics_v1.0.0_2015.10.10_4005
+ *
+ * @param netVer
+ * @param lossPatchs
+ *
+ * @return 
+ */
+int downLossPatch(version_t *netVer, patchSet_t *lossPatchs);
+/**
+ * @brief 
+ *
+ * @param lossPatchs
+ * @param set
+ *
+ * @return 
+ */
+int patchs2str(patchSet_t *lossPatchs, string &set);
+/**
+ * @brief int  to asic
+ *
+ * @param inum
+ * @param str
+ *
+ * @return 
+ */
+int itoa(int inum, string &str);
 
+/**
+ * @brief 根据组版本号和patchnum生成版本号
+ *
+ * @param baseVer
+ * @param patchVer
+ *
+ * @return 
+ */
+int mkVer(int baseVer, int patchVer);    
 #endif

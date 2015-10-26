@@ -373,6 +373,242 @@ err:
     return false;      
 }
 
+int FiUpdateAssistant::downLossPkg(version_t *netVer, long ldate, int patchNo)
+{
+    char* filename;
+    int ret =0;
+    char* layout;
+    int trycnt=0;
+    ::CORBA::String_var outfilename;
+    ::CORBA::Long size;
+    string strDate;
+    string strPatchNo;
+
+    long2Date(ldate, strDate);
+    itoa(patchNo, strPatchNo);
+    ut_dbg("prepare to downPkg\n");
+    fflush(stdout);
+
+    while( (ret ==0)&& trycnt<2 )
+    {
+        trycnt++;
+        if (trycnt > 1)
+        {
+            ut_dbg("Attempt to connect server [%d]\n" , trycnt);
+        }
+        MAKE_RPC_INVOKE(rHandle,StartupUpdate(PInfo, which, netVer->version , strDate, strPatchNo, outfilename, size, _ref),ret);
+    }
+    if( ret == 0)
+    {
+        ut_dbg("network crash,stopping update line:%d\n",__LINE__);
+        fflush(stdout);
+//        NOTIFY_UPDATELAOAD_FINISH_FAIL();
+        return -7;
+    }
+    filename = outfilename.inout();
+    if(_ref==0)
+    {
+        ut_dbg("no package available line:%d\n",__LINE__);
+        fflush(stdout);
+//        NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
+//        UpdateVersionFile();
+        return 0;
+    }
+
+    this->filename = filename;
+    //this->layout = layout;
+    ut_dbg("start download file %s\n",filename);
+    fflush(stdout);
+    //CORBA::string_free(filename);
+    // CORBA::string_free(layout);
+    beginDownloadPkg(this->filename.c_str());
+    return 20;  
+}
+int FiUpdateAssistant::beginDownloadPkg(const char* filename)
+{
+    int pack_expect =1;
+    char buff[256];
+    int ret =-1;
+
+    ut_dbg("begin translate file:%s\n",filename);
+    fflush(stdout);
+    if( pack_expect==1 )
+    {
+        FiGetCurDir(sizeof(buff),buff);
+        std::string fullname(buff);
+#ifdef WIN32 
+        char *suffix =".tar.gz";
+#else
+        char *suffix = ".tar.gz";
+#endif
+        char* p = strstr((char*)filename, suffix);
+        assert(p!=NULL);
+        this->dirfilename= std::string(filename,p-filename);
+        char cmd[300];
+#ifdef WIN32
+        std::string tmp = fullname+dirfilename;
+        sprintf(cmd,"rd /s/q %s\n",tmp.c_str());
+        FiExecuteShell(cmd);
+        tmp.clear();
+        tmp=fullname+filename;
+        sprintf(cmd,"del /s/q %s\n",tmp.c_str());
+        FiExecuteShell(cmd);
+#else
+        std::string tmp=fullname+dirfilename;
+        sprintf(cmd,"rm -rf %s\n",tmp.c_str());
+        FiExecuteShell(cmd);
+        FiExecuteShell(cmd);
+
+        tmp = fullname + filename;
+        sprintf(cmd,"rm -f %s\n",tmp.c_str());
+        FiExecuteShell(cmd);
+#endif
+        fullname += filename;
+        //fullname +=".tmp";
+        ret = FiCreateFile(fullname.c_str());
+        if( ret==-1 )
+        {
+            ut_dbg("can not create file named %s locally, make sure run as a root \n",fullname.c_str());
+            fflush(stdout);
+//            NOTIFY_UPDATELAOAD_FINISH_FAIL();
+            return -1;
+        }
+        fpdownload = FiOpenExistFile(fullname.c_str());
+    }
+
+    do 
+    {
+        ::CORBA::Long flag;
+        int trycnt=0;
+        ret =0;
+        bfstream_var bfs;
+        ::CORBA::Long checknum;
+ /* :TODO:2015/10/15 15:21:32:hwt:  trycnt = 5 改为 trycnt = 1，受系统TCP keeplive影响，一次默认为75s，5次时间太长,会导致迟迟没有更新 10 分钟*/
+        while( (ret == 0)&& trycnt<2 )
+        {
+            trycnt++;
+            if (trycnt > 1)
+            {
+                ut_dbg("Attempt to connect server pack_expect[%d][%d]\n" ,pack_expect, trycnt);
+            }
+            MAKE_RPC_INVOKE(rHandle,TranslateFile(_ref,pack_expect,bfs,checknum,flag),ret);
+        }
+ /* :TODO:End---  */
+        if( ret ==0 )
+        {
+            ut_dbg("network crash,stopping update\n");
+            fflush(stdout);
+//            NOTIFY_UPDATELAOAD_FINISH_FAIL();
+            FiCloseFile(fpdownload);
+            return -34;
+        }
+        unsigned int chknum =0;
+        unsigned int size = bfs->length();
+        for(unsigned int i=0;i<size;++i)
+        {
+            chknum +=(unsigned int)(bfs[i]);
+        }
+        if(chknum ==checknum)
+        {
+            int wsize =FiWriteFile(fpdownload,(char*)(&bfs[0]),size);
+            assert(wsize==size);//need to modify hwt
+            pack_expect++;
+            if( flag )
+            {
+                FiCloseFile(fpdownload);
+                ret = 0;
+                //down file over
+//                ret=svc();
+                break;
+            }
+        }
+        else
+        {
+            ut_dbg("check num is  incorrect,redownload package[%d]!\n",pack_expect);
+            fflush(stdout);
+            ret = -1;
+            //return 0;
+        }
+
+    } while (true);
+
+    return ret;
+}
+/**
+ * @brief 安装大于当前版本的所有patch
+ *
+ * @param version
+ * @param lossPatchs
+ *
+ * @return 
+ */
+int FiUpdateAssistant::installAllPatch(version_t *ver)
+{
+
+    /*-----------------------------------------------------------------------------
+     *  1. scan all tar.gz
+     *  2. sort 
+     *  3. install tar.gz
+     *-----------------------------------------------------------------------------*/
+    string fileName;
+    vector<string> pkgList;
+    char *suffix = "tar.gz";
+    char *prefix = "server";
+    char *ver    = "v1.0.0"
+    int i = 0;
+    int ret = 0;
+    string patchNo;
+    string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"
+    int localPatchNo = atoi(ver->patchNo);
+    //scan all tar.gz
+    if (getPkgList(path, prefix, suffix, ver, pkgList) < 0)
+    {
+        ut_err("get pkg list fail\n");
+    }
+    //sort
+    pkgList.sort();//从小到大  删除不合法的 //need to modify
+    int size = pkgList.size();
+    int ipatchNo = 0;
+    for (i = 0; i<size; i++)
+    {
+        ipatchNo = getPatchNumFromName(pkgList[i].c_str());
+        if (localPatchNo >= ipatchNo)//取版本号比当前大的然后安装 小的跳过
+            continue;
+        if (installSinglePatch(pkgList[i]) < 0)
+        {
+            ret = -1;
+            ut_err("install patch [%s] fail\n", pkgList[i].c_str());
+        }
+    }
+    if (ret == 0)
+    {
+        installOver = true;
+    }
+    return ret;
+}
+/**
+ * @brief 安装单个补丁包，只有版本信息，补丁号 没有时间
+ *
+ * @param version
+ * @param Unknown
+ *
+ * @return 
+ */
+int FiUpdateAssistant::installSinglePatch(const char *fileName)
+{
+    int ret = 0;
+
+    /*-----------------------------------------------------------------------------
+     *  1. uncompress tar.gz
+     *  2. begin install
+     *-----------------------------------------------------------------------------*/
+    string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"
+    this->filename = fileName;
+    ret = svc();
+    ut_dbg("install ret[%d]\n", ret);
+
+    return 0;
+}
 int FiUpdateAssistant::update()
 {
     char* filename;
@@ -1603,7 +1839,8 @@ int FiUpdateAssistant::svc()
     ut_dbg("update finish!\n");
     fflush(stdout);
 
-    
+    if (installOver)
+    {
     if(pack.bReboot)
     {
 #ifdef WIN32
@@ -1634,7 +1871,7 @@ int FiUpdateAssistant::svc()
         if(which != CLIENT )
         {
             startupself = installpath+"apache-tomcat-7.0.28/bin/startup.sh \n";
-            FiExecuteShell(startupself.c_str());
+            FiExecuteShell(startupself.c_str());//need to modify
             FiWriteFile(fpuninstall,(void*)(startupself.c_str()),startupself.length());
             //std::string startupself;
 //            startupself = "nohup "+installpath +"client/fiwatchdog & \n";            
@@ -1657,7 +1894,7 @@ int FiUpdateAssistant::svc()
             //FiWriteFile(fpinstall,(void*)(startupself.c_str()),startupself.length());
            FiWriteFile(fpuninstall,(void*)(startupself.c_str()),startupself.length());
            FiCloseFile(fpuninstall);
-           FiExecuteShell(curdir.c_str());
+           FiExecuteShell(curdir.c_str());//need to modify
            //undo 1>log
            //do log>1
 #ifdef WIN32
@@ -1684,7 +1921,7 @@ int FiUpdateAssistant::svc()
 #endif
            ut_dbg("clear stdout \n");
            fflush(stdout);
-           FiExecuteShell(startupself.c_str());
+           FiExecuteShell(startupself.c_str());//need to modify
 #ifdef WIN32
 #else
 	       char *path = "/sobey/fics/update/FiUpdateLoader.log";
@@ -1694,6 +1931,7 @@ int FiUpdateAssistant::svc()
            fflush(stdout);
 #endif
        }
+    }
     }
     
     NOTIFY_UPDATELAOAD_FINISH_SUCCESS();

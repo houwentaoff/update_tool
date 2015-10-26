@@ -553,7 +553,7 @@ _0RL_lcfn_1a070d6de3072870_80000000(omniCallDescriptor* cd, omniServant* svnt)
 
 }
 // Proxy call descriptor class. Mangled signature:
-//  _clong_i_cstring_o_a100_clong
+//  _clong_i_cstring_o_a100_a2_clong
 class _0RL_cd_1a070d6de3072870_90000000
   : public omniCallDescriptor
 {
@@ -597,13 +597,15 @@ void _0RL_cd_1a070d6de3072870_90000000::marshalReturnedValues(cdrStream& _n)
 {
   result >>= _n;
   if (! _n.marshal_byte_swap()) {
-    _n.put_octet_array((_CORBA_Octet*)((::CORBA::Long*)arg_1),400,omni::ALIGN_4);
+    _n.put_octet_array((_CORBA_Octet*)((patchSet_t_slice*)arg_1),800,omni::ALIGN_4);
   }
   else 
   {
-    _n.declareArrayLength(omni::ALIGN_4, 400);
+    _n.declareArrayLength(omni::ALIGN_4, 800);
     for (_CORBA_ULong _0i0 = 0; _0i0 < 100; _0i0++){
-      arg_1[_0i0] >>= _n;
+      for (_CORBA_ULong _0i1 = 0; _0i1 < 2; _0i1++){
+        arg_1[_0i0][_0i1] >>= _n;
+      }
     }
   }
 
@@ -612,7 +614,7 @@ void _0RL_cd_1a070d6de3072870_90000000::marshalReturnedValues(cdrStream& _n)
 void _0RL_cd_1a070d6de3072870_90000000::unmarshalReturnedValues(cdrStream& _n)
 {
   (::CORBA::Long&)result <<= _n;
-  _n.unmarshalArrayLong((_CORBA_Long*)((::CORBA::Long*)arg_1), 100);
+  _n.unmarshalArrayLong((_CORBA_Long*)((patchSet_t_slice*)arg_1), 200);
 
 }
 

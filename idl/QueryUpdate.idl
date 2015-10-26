@@ -25,6 +25,7 @@ interface FiUpdateMgr
     long starupTrans(in string fileName, out long size,out long long fileRef);//1. open file 2. return size of file 3. return file handle 
     long transFile(in long long fileRef, in long packid, out bfstream bfs,out long checknum,out long flag);//1.starupTrans 2.transFile
     long queryPatchs(in string version, out patchSet_t patchs);//query cur patchs in server.
+    //long downPkg(in PlatformInfoEx Pinfo, in long)
     
 };
 

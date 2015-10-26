@@ -163,8 +163,8 @@ private:
   bfstream_out& operator=(const bfstream_var&);
 };
 
-typedef ::CORBA::Long patchSet_t[100];
-typedef ::CORBA::Long patchSet_t_slice;
+typedef ::CORBA::Long patchSet_t[100][2];
+typedef ::CORBA::Long patchSet_t_slice[2];
 
 inline patchSet_t_slice* patchSet_t_alloc() {
   return new patchSet_t_slice[100];
@@ -175,9 +175,11 @@ inline patchSet_t_slice* patchSet_t_dup(const patchSet_t_slice* _s) {
   patchSet_t_slice* _data = patchSet_t_alloc();
   if (_data) {
     for (_CORBA_ULong _0i0 = 0; _0i0 < 100; _0i0++){
-      
-      _data[_0i0] = _s[_0i0];
+      for (_CORBA_ULong _0i1 = 0; _0i1 < 2; _0i1++){
+        
+        _data[_0i0][_0i1] = _s[_0i0][_0i1];
 
+      }
     }
 
   }
@@ -186,9 +188,11 @@ inline patchSet_t_slice* patchSet_t_dup(const patchSet_t_slice* _s) {
 
 inline void patchSet_t_copy(patchSet_t_slice* _to, const patchSet_t_slice* _from){
   for (_CORBA_ULong _0i0 = 0; _0i0 < 100; _0i0++){
-    
-    _to[_0i0] = _from[_0i0];
+    for (_CORBA_ULong _0i1 = 0; _0i1 < 2; _0i1++){
+      
+      _to[_0i0][_0i1] = _from[_0i0][_0i1];
 
+    }
   }
 
 }
