@@ -6,7 +6,7 @@
 #include "../comm/FiRpcSrv.h"
 #include "../comm/utility.h"
 #include "../comm/include.h"
-#include "../idl/QueryUpdate.h"
+#include "../idl/QueryUpdate.hh"
 typedef RPC_PROXY_HANDLE<FiUpdateMgr>* RPCHandle;
 class FiUpdateAssistant
 {
@@ -82,6 +82,12 @@ public:
     }
 
 	bool checkfolder(const char* folder1_full,const char* folder2_full);
+    int downLossPkg(version_t *netVer, long ldate, int patchNo);
+    int beginDownloadPkg(const char* filename);
+    int installAllPatch(version_t *ver);
+    int installSinglePatch(const char *fileName);
+    int queryPatchs(patchSet_t patchs);
+
 private:
     FiRpcCli<FiUpdateMgr> *cli;
     RPCHandle rHandle;

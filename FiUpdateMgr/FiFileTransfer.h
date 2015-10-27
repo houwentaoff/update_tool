@@ -1,7 +1,7 @@
 #ifndef _FI_FILE_TRANSFER_H__
 #define _FI_FILE_TRANSFER_H__
 #include "../comm/FiRpcCli.h"
-#include "../idl/QueryUpdate.h"
+#include "../idl/QueryUpdate.hh"
 #include "../comm/concurrent.h"
 class FiUpdateMgrImpl;
 typedef RPC_PROXY_HANDLE<FiUpdateLoader>* RPCHandle;

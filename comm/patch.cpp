@@ -18,6 +18,18 @@
  */
 
 #include "patch.h"
+#include <pthread.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <libgen.h>
+
+#include <errno.h>
+
 #define LEN_SHORT            128/*  */
 
 /**
@@ -95,14 +107,15 @@ int genHashFromHis(const char *path, string & hashValue)
         keySum += buf;
     }
     //利用opList生成MD5值，作为hash值 供客户端查询
-    MD5(keySum.c_str(), strlen (keySum.c_str()), md);
+//    MD5(keySum.c_str(), strlen (keySum.c_str()), md);//mark
     for  (i = 0; i < 16; i++)
     {
         sprintf(tmp, "%2.2x" , md[i]);
         strcat(md5, tmp);
     }
+    hashValue = md5;
 
-    return (hashValue = md5);
+    return 0;
 err:
     return -1;
 }
@@ -132,28 +145,28 @@ err:
 }
 int scanAllPatch(const char *path, vector<string> & verList)
 {
-
+    return 0;
 }
 bool shouldInsBase(int localBase, int remoteBase)
 {
-
+    return 0;
 }
 bool shouldInsPatch(int patchNum)
 {
-
+    return 0;
 }
 bool installPatch(int patchNum)
 {
-
+    return 0;
 }
 bool installBase(int baseNum)
 {
-
+    return 0;
 }
-bool checkAllpatchIsIn(const int patchSet[BASEINTERVAL], int (*need2down)[])
-{
-
-}
+//bool checkAllpatchIsIn(const int patchSet[BASEINTERVAL][2], patchSet need2down[BASEINTERVAL][2])
+//{
+//    return 0;
+//}
 int mkVer(int baseVer, int patchVer)
 {
     return (baseVer*BASEINTERVAL + patchVer);
@@ -185,7 +198,7 @@ int itoa(int inum, string &str)
  *
  * @return 
  */
-int downLossPatch(version_t *netVer, patchSet_t *lossPatchs)
+int downLossPatch(version_t *netVer, patchSet_t lossPatchs)
 {
     int i=0;
     int ret = 0;
@@ -235,7 +248,7 @@ int downLossPatch(version_t *netVer, patchSet_t *lossPatchs)
     }
     return ret;
 }
-int patchs2str(patchSet_t *lossPatchs, string &set)
+int patchs2str(patchSet_t lossPatchs, string &set)
 {
     char buf[8];
     int i = 0;
@@ -300,6 +313,7 @@ int getPkgList(char const * path, char const * prefix, char const *suffix, const
     char cmdBuf[256] = {0};
     char tmppath[256]={0};
     char *fileName = NULL;
+    FILE *fp = NULL;
 
     sprintf(cmdBuf, "find %s -name %s_%s_*.%s", path, prefix, version, suffix);
     if (NULL == (fp = popen(cmdBuf, "r")))
@@ -426,7 +440,7 @@ int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatch
     int i=0;
     bool exist = false;
     vector <string> pathDirList;
-    vector <string> iterator::itr;
+    vector <string>::iterator itr;
     char tmpPath[256]={0};
     string version = netVer->version;
     int patchNo = 0;
@@ -442,7 +456,7 @@ int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatch
             patchNo = basePatch * BASEINTERVAL;
             //check local pkg /sobey/fics/update/fics_v1.0.0_2015.10.14(*)_4005 暂时只检查目录不检查tar.gz的压缩包 fics_v1.0.0_date(skip)_4005
             // i ==> patchNum
-            sprintf(tmpPath, "fics_%s_*_%d", version, patchNo+i);//正则 need to modify not fics_... client_...
+            sprintf(tmpPath, "fics_%s_*_%d", version.c_str(), patchNo+i);//正则 need to modify not fics_... client_...
             for (itr = pathDirList.begin(); itr!= pathDirList.end(); itr++)
             {
                 if (matchRE(itr->c_str(), tmpPath))
@@ -467,12 +481,14 @@ int checkAndDownPkg()
      *  2. compare local pkg
      *  3. down pkg that I dont have
      *-----------------------------------------------------------------------------*/
-    patchSet_t patchs;
-    patchSet_t lossPatchs;
+    patchSet_t patchs;//memset
+    patchSet_t lossPatchs;//memset
+    int i = 0;
+    int ret = 0;
     
 
     FiUpdateAssistant::getinstance()->queryPatchs(patchs);
-    if (0 == comparePatchs(FiUpdateAssistant::getinstance()->netVer, patchs, &lossPatchs))
+    if (0 == comparePatchs(&(FiUpdateAssistant::getinstance()->netVer), patchs, lossPatchs))
     {
         ut_dbg("my patchs is the same as server, dont need to down\n");
     }
@@ -482,7 +498,7 @@ int checkAndDownPkg()
         i = 4;
         while (i-- && ret!=0)
         {
-            if ((ret = downLossPatch(FiUpdateAssistant::getinstance()->netVer, lossPatchs)) < 0)
+            if ((ret = downLossPatch(&(FiUpdateAssistant::getinstance()->netVer), lossPatchs)) < 0)
             {
                 //lossPatchs changed
                 string set;

@@ -1,9 +1,11 @@
 #include "FiUpdateMgrImpl.h"
 #include "../comm/utility.h"
 #include "../comm/include.h"
+#include "../comm/patch.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include <assert.h>
+#include <errno.h>
 #define LENPERPACK 400
 FiUpdateMgrImpl::FiUpdateMgrImpl()
 {
@@ -20,7 +22,7 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
  *
  * @return 
  */
-::CORBA::Long queryPatchs(const char* version, ::patchSet_t patchs)
+::CORBA::Long FiUpdateMgrImpl::queryPatchs(const char* version, ::patchSet_t patchs)
 {
     //version: cur ver   fics_v1.0.0_2015.10.16_4005
     //paths cur pat num set
@@ -38,21 +40,22 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
     char *pos;
     char *date;
     char *fileName;
+    FILE *fp = NULL;
     int r=0;
     /*-----------------------------------------------------------------------------
      *  0. scan fics_v1.0.0_2015.09.12_4000.zip -- fics_v1.0.0_2015.10.16_4005.zip
      *  1. get base num, get patchNum
      *  2. scan a
      *-----------------------------------------------------------------------------*/
-    if (getLocalVersion(curVer) != 0)
+    if (getLocalVersion(&curVer) != 0)
     {
         ut_err("get local ver fail\n");
         return 1;
     }
     patch = atoi(curVer.patchNo);
     baseVer  = getCurBaseVer(patch);//40
-    patchVer = getCurPatchVer(patch)//5
-    int tmpVer = baseVer * BASEINTERVAL;
+    patchVer = getCurPatchVer(patch);//5
+    tmpVer = baseVer * BASEINTERVAL;
     for (i = 0; i<=patchVer; i++)
     {
         sprintf(fileNameRE, "%sfics_%s_*_%d.zip", _PATH_PKG_DL, curVer.version, tmpVer+i);//reg skip date
@@ -267,27 +270,26 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
 		
 		std::string selectversion ;
 		std::string selectdate;
-		if (folder.at(folder.length()-2)=='_')//倒数第二个
-		{
-			strpatchno.resize(2);
-			strpatchno[0]= folder.at(folder.length()-1);
-			strpatchno[1]=0;
-			folder.resize(folder.length()-2);
-		}
-		std::string::size_type pos = folder.find('v');
-		std::string::size_type endpos = folder.rfind('_');
-		assert(pos!=std::string::npos&&endpos!=std::string::npos);
-		for (;pos!=endpos;pos++)
-		{
-			selectversion.push_back(folder[pos]);
-		}
-		++endpos;
-		while (folder[endpos]!='\0')
-		{
-			selectdate.push_back(folder[endpos]);
-			endpos++;
-		}
-		assert(!selectversion.empty()&&!selectdate.empty());
+        char *posTmp = NULL;
+        char *sdate  = NULL ;
+        char *sversion = NULL;
+        char *spatchNo = NULL;
+
+        char strBuf[100] = {0};
+
+        strcpy(strBuf, folder.c_str());
+        posTmp = strchr(strBuf, '_');//_v1.0.0
+        sversion = posTmp+1;
+        posTmp = strchr(posTmp+1, '_');//_2015
+        *posTmp = '\0';
+        sdate = posTmp+1;
+        posTmp = strchr(posTmp+1, '_');//_4005
+        *posTmp = '\0';
+        spatchNo = posTmp+1;
+        //pos = strchr(pos+1, '_');//_4005
+        selectversion = sversion;
+        selectdate = sdate;
+        strpatchno = spatchNo;
 		version = CORBA::string_dup(selectversion.c_str());
 		date =  CORBA::string_dup(selectdate.c_str());
 		patchno =  CORBA::string_dup(strpatchno.c_str());

@@ -377,8 +377,8 @@ int compareVersion(version_t *local, version_t *net)
     int newDateDay      = 0;
     int localpatchno    = 0;
     int newerpatchno    = 0;
-    string localHash    = 0;
-    string newerHash    = 0;
+    string localHash    = "";
+    string newerHash    = "";
 
     if (!local || !net)
     {
@@ -388,7 +388,7 @@ int compareVersion(version_t *local, version_t *net)
     sscanf(local->version, "v%d.%d.%d", &localFirstVer, &localSecondVer, &localLastVer);
     sscanf(local->patchNo, "%d", &localpatchno);
     sscanf(local->date, "%d.%02d.%02d", &localDateYear, &localDateMoth, &localDateDay);
-    localHash = local->hash;
+    localHash = local->reserved.hash;
     ut_dbg("the local version:%s date:%s local %d.%d.%d date:%d.%d%d patch:%d\n hash:%s\n",
      local->version, local->date ,localFirstVer,localSecondVer,localLastVer,
         localDateYear,localDateMoth,localDateDay,localpatchno, localHash.c_str());
@@ -400,7 +400,7 @@ int compareVersion(version_t *local, version_t *net)
     sscanf(net->patchNo, "%d", &newerpatchno);
     sscanf(net->version,"v%d.%d.%d",&newFirstVer,&newSecondVer,&newLastVer);
     sscanf(net->date,"%d.%02d.%02d",&newDateYear,&newDateMoth,&newDateDay);
-    newerHash = net->hash;
+    newerHash = net->reserved.hash;
 
 //    newerver = version;
 //    newerdate = date;

@@ -1,6 +1,7 @@
 #include "FiUpdateAssistant.h"
 #include "../comm/utility.h"
 #include "../comm/include.h"
+#include "../comm/patch.h"
 #include "SAXParserHandler.h"
 #ifdef _WIN32
 #include <direct.h>
@@ -27,7 +28,7 @@
 #include <assert.h>
 #include<vector>
 #include<fcntl.h>
-#include <algorithm>
+#include<algorithm>
 #pragma  warning(disable:4819)
 #pragma  warning(disable:4996)
 #define NOTIFY_UPDATELAOAD_FINISH_FAIL() \
@@ -396,7 +397,7 @@ int FiUpdateAssistant::downLossPkg(version_t *netVer, long ldate, int patchNo)
         {
             ut_dbg("Attempt to connect server [%d]\n" , trycnt);
         }
-        MAKE_RPC_INVOKE(rHandle,StartupUpdate(PInfo, which, netVer->version , strDate, strPatchNo, outfilename, size, _ref),ret);
+        MAKE_RPC_INVOKE(rHandle,StartupUpdate(PInfo, which, netVer->version , strDate.c_str(), strPatchNo.c_str(), outfilename, size, _ref),ret);
     }
     if( ret == 0)
     {
@@ -554,19 +555,20 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     vector<string> pkgList;
     char *suffix = "tar.gz";
     char *prefix = "server";
-    char *ver    = "v1.0.0"
+    char *verTest    = "v1.0.0";
     int i = 0;
     int ret = 0;
     string patchNo;
-    string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"
+    char *path = "./";
+    string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz";
     int localPatchNo = atoi(ver->patchNo);
     //scan all tar.gz
-    if (getPkgList(path, prefix, suffix, ver, pkgList) < 0)
+    if (getPkgList(path, prefix, suffix, verTest, pkgList) < 0)
     {
         ut_err("get pkg list fail\n");
     }
     //sort
-    pkgList.sort();//从小到大  删除不合法的 //need to modify
+    //pkgList.sort();//从小到大  删除不合法的 //need to modify
     int size = pkgList.size();
     int ipatchNo = 0;
     for (i = 0; i<size; i++)
@@ -574,7 +576,7 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
         ipatchNo = getPatchNumFromName(pkgList[i].c_str());
         if (localPatchNo >= ipatchNo)//取版本号比当前大的然后安装 小的跳过
             continue;
-        if (installSinglePatch(pkgList[i]) < 0)
+        if (installSinglePatch(pkgList[i].c_str()) < 0)
         {
             ret = -1;
             ut_err("install patch [%s] fail\n", pkgList[i].c_str());
@@ -602,7 +604,7 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
      *  1. uncompress tar.gz
      *  2. begin install
      *-----------------------------------------------------------------------------*/
-    string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"
+    string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz";
     this->filename = fileName;
     ret = svc();
     ut_dbg("install ret[%d]\n", ret);
@@ -659,7 +661,7 @@ int FiUpdateAssistant::update()
     handl_input(this->filename.c_str());
     return 20;  
 }
-int FiUpdateAssistant::queryPatchs(patchSet_t *patchs)
+int FiUpdateAssistant::queryPatchs(patchSet_t patchs)
 {
     int ret =0;
     string version;
@@ -671,7 +673,7 @@ int FiUpdateAssistant::queryPatchs(patchSet_t *patchs)
         ret = -1;
         goto err;
     }
-    if (0 != getLocalVersion(curVer))
+    if (0 != getLocalVersion(&curVer))
     {
         ut_err("get local version fail\n");
         version = "";
@@ -681,7 +683,7 @@ int FiUpdateAssistant::queryPatchs(patchSet_t *patchs)
         version = curVer.version;
     }
 
-    MAKE_RPC_INVOKE(rHandle, queryPatchs(version, patchs), ret);
+    MAKE_RPC_INVOKE(rHandle, queryPatchs(version.c_str(), patchs), ret);
     if( ret ==0 )
     {
         ut_dbg("network crash,check the config pls\n");
@@ -1432,7 +1434,7 @@ int FiUpdateAssistant::svc()
         }
 #endif
         std::string strTemp = fileloc;
-        transform(strTemp.begin(),strTemp.end(),strTemp.begin(),tolower);//to lower
+        transform(strTemp.begin(),strTemp.end(),strTemp.begin(), ::tolower);//to lower  need
         std::string::size_type pos = strTemp.find("%root");
         if( pos == std::string::npos)
         {
@@ -1826,7 +1828,7 @@ int FiUpdateAssistant::svc()
     }
 
     UpdateVersionFile();
-    addVer2His(newVer, HISTORY);
+    addVer2His(&netVer, HISTORY);
     chdir(installpath.c_str());//set current dir
     
     char clean[200];

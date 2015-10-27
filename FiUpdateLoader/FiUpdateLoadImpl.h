@@ -1,6 +1,6 @@
 #ifndef _FI_UPDATE_LOADER_IMPL_H__
 #define _FI_UPDATE_LOADER_IMPL_H__
-#include "../idl/QueryUpdate.h"
+#include "../idl/QueryUpdate.hh"
 class FiUpdateLoaderImpl:public POA_FiUpdateLoader
 {
 public:

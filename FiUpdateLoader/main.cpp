@@ -1,4 +1,5 @@
 #include"../comm/utility.h"
+#include"../comm/patch.h"
 #include "FiUpdateAssistant.h"
 #include "../comm/FiRpcCli.h"
 #include "../comm/include.h"
@@ -239,7 +240,7 @@ int main(int argc, char **argv)
                 FiUpdateAssistant::getinstance()->installAllPatch();
             }
 #endif
-            FiUpdateAssistant::getinstance()->installAllPatch();
+            FiUpdateAssistant::getinstance()->installAllPatch(&localVer);
             //FiUpdateAssistant::getinstance()->update();
         }
         else if (ret > 0 && ret != 1000000)

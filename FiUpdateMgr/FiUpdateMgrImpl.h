@@ -1,6 +1,6 @@
 #ifndef _FISHAR_UPDATEMGR_IMPL_H_
 #define _FISHAR_UPDATEMGR_IMPL_H_
-#include "../idl/QueryUpdate.h"
+#include "../idl/QueryUpdate.hh"
 #include "../comm/utility.h"
 
 #include "../comm/concurrent.h"

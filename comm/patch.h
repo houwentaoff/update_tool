@@ -19,15 +19,17 @@
 #ifndef __PATCH_H__
 #define __PATCH_H__
 #include "include.h"
-
+#include "utility.h"
 #include <vector>
 #include <string>
+#include "FiUpdateAssistant.h"
 
 #define      BASEINTERVAL       100/* 补丁号间隔为100 则为base全版本 */
 
 #define HISTORY        "/sobey/fics/history"            /*  */
 
 using namespace std;
+//typedef long patchSet_t[100][2];
 /**
  * @brief 从补丁号中获取全版本号
  *        如 补丁号为259 则其全版本号为200,59 为补丁号
@@ -123,7 +125,7 @@ bool installBase(int baseNum);
  *
  * @return true: 不用下载 need2down为空 false:需要下载，并返回需要下载补丁号列表
  */
-bool checkAllpatchIsIn(const int patchSet[BASEINTERVAL], int (*need2down)[]);//not use
+bool checkAllpatchIsIn(const int patchSet[BASEINTERVAL], int (*need2down)[BASEINTERVAL]);//not use
 /**
  * @brief 比较服务器的Patchs和本地的包进行对比，并将缺少的包标记到 lossPatchs中
  * 代替了checkAllpatchIsIn
@@ -183,7 +185,7 @@ bool matchRE(const char *src, const char *re);
  *
  * @return 
  */
-int downLossPatch(version_t *netVer, patchSet_t *lossPatchs);
+int downLossPatch(version_t *netVer, patchSet_t lossPatchs);
 /**
  * @brief 
  *
@@ -211,5 +213,25 @@ int itoa(int inum, string &str);
  *
  * @return 
  */
-int mkVer(int baseVer, int patchVer);    
+int mkVer(int baseVer, int patchVer);
+/**
+ * @brief   server_v1.1.0_2015.09.29_4005_64_Linux2.6.tar.gz
+ *
+ * @param tarName
+ *
+ * @return 
+ */
+int getPatchNumFromName(char const *tarName);
+/**
+ * @brief 获取包列表
+ *
+ * @param path
+ * @param prefix
+ * @param suffix
+ * @param version
+ * @param pkgList
+ *
+ * @return 
+ */
+int getPkgList(char const * path, char const * prefix, char const *suffix, const char *version, vector<string> & pkgList);
 #endif
