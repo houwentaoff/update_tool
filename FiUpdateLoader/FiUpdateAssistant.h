@@ -73,7 +73,7 @@ public:
 	int UpdateVersionFile();
     int handl_input(const char* filename);
     int RollBack(const char*version,const char* date,const char* patchno);
-	 bool CheckReg(std::vector<Reg_Layout_t>& regs);
+	bool CheckReg(std::vector<Reg_Layout_t>& regs);
 public:
     static FiUpdateAssistant* getinstance()
     {
@@ -87,6 +87,7 @@ public:
     int installAllPatch(version_t *ver);
     int installSinglePatch(const char *fileName);
     int queryPatchs(patchSet_t patchs);
+    int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatchs);
 
 private:
     FiRpcCli<FiUpdateMgr> *cli;
@@ -108,15 +109,14 @@ private:
 
     std::string localIP;
 
-	
-
 	PlatformInfoEx    PInfo;
 	CORBA::LongLong          _ref;
     bool installOver;
+    int totalPkg;
+    int curCountInstalled;
 public:
     version_t localVer;
     version_t netVer;
-    
 };
 
 #endif

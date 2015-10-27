@@ -58,7 +58,7 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
     tmpVer = baseVer * BASEINTERVAL;
     for (i = 0; i<=patchVer; i++)
     {
-        sprintf(fileNameRE, "%sfics_%s_*_%d.zip", _PATH_PKG_DL, curVer.version, tmpVer+i);//reg skip date
+        sprintf(fileNameRE, "%sfics_%s_*_%d.zip", _PATH_PKG_DL, curVer.version, tmpVer+i);//reg skip date eg:fics_v1.0.0_*_4005.zip
         sprintf(cmdBuf, "find %s -name \'%s\'", _PATH_PKG_DL, fileNameRE);
         if (NULL == (fp = popen(cmdBuf, "r")))
         {
@@ -366,7 +366,7 @@ int gen_optional_pack_name(const ::PlatformInfoEx& PInfo,std::vector<std::string
 	std::string fname;
 	for (int i=0;i<optinalname.size();++i)
 	{
-		std::string name = prix+"_"+version+"_"+date+optinalname[i];
+		std::string name = prix+"_"+version+"_"+date+"_"+patchno+"_"+optinalname[i];
 		std::string fullname(buff);
 #ifdef WIN32
 		fullname+=folder+"\\"+name;
@@ -395,7 +395,7 @@ int gen_optional_pack_name(const ::PlatformInfoEx& PInfo,std::vector<std::string
 		return 1;
 	}
 	
-	std::string name = prix+"_"+version+"_"+date+fname;
+	std::string name = prix+"_"+version+"_"+date+"_"+patchno+"_"+fname;
 	std::string fullname(buff);
 #ifdef WIN32
 	fullname+=folder+"\\"+name;

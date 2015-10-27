@@ -64,6 +64,8 @@ struct FilePair
     std::string file2;
 };
 
+const char *prixMatrix[] = {"server", "client", "Massvr", NULL};
+
 FiUpdateAssistant::FiUpdateAssistant(FiEvent* hEvent)
 :evnt(hEvent)
 {
@@ -75,6 +77,9 @@ FiUpdateAssistant::FiUpdateAssistant(FiEvent* hEvent)
     bReplaceEnd= false;
     
     bUpFinished = false;
+    totalPkg = 0;
+    curCountInstalled = 0;
+    installOver = false;
 
     memset(&localVer, 0, sizeof(version_t));
     memset(&netVer, 0, sizeof(version_t));
@@ -94,6 +99,9 @@ FiUpdateAssistant::FiUpdateAssistant()
     evnt = NULL;
 
     bUpFinished = false;
+    totalPkg = 0;
+    curCountInstalled = 0;
+    installOver = false;
     memset(&localVer, 0, sizeof(version_t));
     memset(&netVer, 0, sizeof(version_t));
 }
@@ -535,6 +543,10 @@ int FiUpdateAssistant::beginDownloadPkg(const char* filename)
 
     return ret;
 }
+static bool comp(string &a, string &b)
+{
+    return a<b;
+}
 /**
  * @brief 安装大于当前版本的所有patch
  *
@@ -555,7 +567,7 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     vector<string> pkgList;
     char *suffix = "tar.gz";
     char *prefix = "server";
-    char *verTest    = "v1.0.0";
+    char *verTest    = ver->version;//"v1.0.0";
     int i = 0;
     int ret = 0;
     string patchNo;
@@ -567,14 +579,16 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     {
         ut_err("get pkg list fail\n");
     }
-    //sort
+    sort(pkglist.begin(), pkgList.end(), comp);
     //pkgList.sort();//从小到大  删除不合法的 //need to modify
     int size = pkgList.size();
+    totalPkg = size;
     int ipatchNo = 0;
     for (i = 0; i<size; i++)
     {
+        curCountInstalled = i+1;
         ipatchNo = getPatchNumFromName(pkgList[i].c_str());
-        if (localPatchNo >= ipatchNo)//取版本号比当前大的然后安装 小的跳过
+        if (localPatchNo >= ipatchNo)//取版本号比当前大的然后安装, 小的跳过
             continue;
         if (installSinglePatch(pkgList[i].c_str()) < 0)
         {
@@ -1841,8 +1855,6 @@ int FiUpdateAssistant::svc()
     ut_dbg("update finish!\n");
     fflush(stdout);
 
-    if (installOver)
-    {
     if(pack.bReboot)
     {
 #ifdef WIN32
@@ -1852,7 +1864,10 @@ int FiUpdateAssistant::svc()
 #endif
         //FiWriteFile(fpinstall,(void*)(str.c_str()),str.length());
         FiWriteFile(fpuninstall,(void*)(str.c_str()),str.length());
-        FiExecuteShell(str.c_str());
+        if (curCountInstalled == totalPkg)
+        {
+            FiExecuteShell(str.c_str());
+        }
     }
     else
     {
@@ -1873,7 +1888,10 @@ int FiUpdateAssistant::svc()
         if(which != CLIENT )
         {
             startupself = installpath+"apache-tomcat-7.0.28/bin/startup.sh \n";
-            FiExecuteShell(startupself.c_str());//need to modify
+            if (curCountInstalled == totalPkg)
+            {
+                FiExecuteShell(startupself.c_str());//need to modify
+            }
             FiWriteFile(fpuninstall,(void*)(startupself.c_str()),startupself.length());
             //std::string startupself;
 //            startupself = "nohup "+installpath +"client/fiwatchdog & \n";            
@@ -1887,7 +1905,7 @@ int FiUpdateAssistant::svc()
         }
 
 #endif
-       if(startupself.length()>0 )
+       if(startupself.length()>0 && totalPkg == curCountInstalled)
        {
 
            std::string curdir = "cd ";
@@ -1934,7 +1952,6 @@ int FiUpdateAssistant::svc()
 #endif
        }
     }
-    }
     
     NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
     return 1;
@@ -1979,7 +1996,6 @@ bool less_second(const std::string & m1, const std::string & m2)
 int FiUpdateAssistant::RollBack(const char*version,const char* date,const char* patchno)
 {
     std::string prix;
-    char *prixMatrix[] = {"server", "client", "Massvr", NULL};
     prix = prixMatrix[which];
     newerver = version;
     newerdate = date;
@@ -2224,3 +2240,54 @@ int FiUpdateAssistant::UpdateVersionFile()
     fclose(curverfp);
     return 0;
 }
+/**
+ * @brief 比较服务器的Patchs和本地的包进行对比，并将缺少的包标记到 lossPatchs中
+ *
+ * @param serPatchs
+ * @param lossPatchs
+ *
+ * @return 
+ */
+int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatchs)
+{
+    int i=0;
+    bool exist = false;
+    vector <string> pathDirList;
+    vector <string>::iterator itr;
+    char tmpPath[256]={0};
+    string version = netVer->version;
+    int patchNo = 0;
+    int basePatch = getCurBaseVer(atoi(netVer->patchNo));
+	std::vector<std::string> optinalname;
+	gen_optional_pack_name(PInfo,optinalname);
+
+    getDirList("./", pathDirList);//get dir list
+
+    for (i=0; i<BASEINTERVAL; i++)
+    {
+        exist = false;
+        if (serPatchs[i] != 0)
+        {
+            patchNo = basePatch * BASEINTERVAL;
+            //check local pkg /sobey/fics/update/fics_v1.0.0_2015.10.14(*)_4005 暂时只检查目录不检查tar.gz的压缩包 fics_v1.0.0_date(skip)_4005
+            // i ==> patchNum
+            sprintf(tmpPath, "%s_%s_*_%d_%s", prixMatrix[which], version.c_str(), patchNo+i, optinalname[0]);//正则 need to modify not fics_... client_... "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"; "server_v1.0.0_*_4001_32_Linux2.6.tar.gz
+
+            for (itr = pathDirList.begin(); itr!= pathDirList.end(); itr++)
+            {
+                if (matchRE(itr->c_str(), tmpPath))
+                {
+                    exist = true;
+                    break;
+                }
+            }
+            if (!exist)//目录不存在 1. get dir name. 2. cmp file name
+            {
+                lossPatchs[i][0] = 1;
+                lossPatchs[i][1] = serPatchs[i][1];
+            }
+        }
+    }
+    return 0;
+}
+

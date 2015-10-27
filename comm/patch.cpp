@@ -267,6 +267,8 @@ int patchs2str(patchSet_t lossPatchs, string &set)
 /**
  * @brief      比较字符串和正则表达式是否匹配
  *          如: fics_v1.0.0_2015.10.10_4005 用 fics_v1.0.0_*_4005 匹配成功 
+ *          如: server_v1.0.0_2015.10.10_4001_32_Linux2.6.tar.gz 用server_v1.0.0_*_4001_32_Linux2.6.tar.gz 匹配成功
+
  * @param src   原始字符串
  * @param re  对应的正则表达式
  *
@@ -427,53 +429,6 @@ int long2Date(long ldate, string &sdate)
     }
     return 0;
 }
-/**
- * @brief 比较服务器的Patchs和本地的包进行对比，并将缺少的包标记到 lossPatchs中
- *
- * @param serPatchs
- * @param lossPatchs
- *
- * @return 
- */
-int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatchs)
-{
-    int i=0;
-    bool exist = false;
-    vector <string> pathDirList;
-    vector <string>::iterator itr;
-    char tmpPath[256]={0};
-    string version = netVer->version;
-    int patchNo = 0;
-    int basePatch = getCurBaseVer(atoi(netVer->patchNo));
-
-    getDirList("./", pathDirList);//get dir list
-
-    for (i=0; i<BASEINTERVAL; i++)
-    {
-        exist = false;
-        if (serPatchs[i] != 0)
-        {
-            patchNo = basePatch * BASEINTERVAL;
-            //check local pkg /sobey/fics/update/fics_v1.0.0_2015.10.14(*)_4005 暂时只检查目录不检查tar.gz的压缩包 fics_v1.0.0_date(skip)_4005
-            // i ==> patchNum
-            sprintf(tmpPath, "fics_%s_*_%d", version.c_str(), patchNo+i);//正则 need to modify not fics_... client_...
-            for (itr = pathDirList.begin(); itr!= pathDirList.end(); itr++)
-            {
-                if (matchRE(itr->c_str(), tmpPath))
-                {
-                    exist = true;
-                    break;
-                }
-            }
-            if (!exist)//目录不存在 1. get dir name. 2. cmp file name
-            {
-                lossPatchs[i][0] = 1;
-                lossPatchs[i][1] = serPatchs[i][1];
-            }
-        }
-    }
-    return 0;
-}
 int checkAndDownPkg()
 {
     /*-----------------------------------------------------------------------------
@@ -485,10 +440,12 @@ int checkAndDownPkg()
     patchSet_t lossPatchs;//memset
     int i = 0;
     int ret = 0;
-    
 
+    memset(&patchs, 0, sizeof(patchSet_t));
+    memset(&lossPatchs, 0, sizeof(patchSet_t));
+    
     FiUpdateAssistant::getinstance()->queryPatchs(patchs);
-    if (0 == comparePatchs(&(FiUpdateAssistant::getinstance()->netVer), patchs, lossPatchs))
+    if (0 == FiUpdateAssistant::getinstance()->comparePatchs(&(FiUpdateAssistant::getinstance()->netVer), patchs, lossPatchs))
     {
         ut_dbg("my patchs is the same as server, dont need to down\n");
     }
