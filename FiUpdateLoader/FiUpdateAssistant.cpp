@@ -543,7 +543,7 @@ int FiUpdateAssistant::beginDownloadPkg(const char* filename)
 
     return ret;
 }
-static bool comp(string &a, string &b)
+static bool comp(string a, string b)
 {
     return a<b;
 }
@@ -579,7 +579,7 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     {
         ut_err("get pkg list fail\n");
     }
-    sort(pkglist.begin(), pkgList.end(), comp);
+    sort(pkgList.begin(), pkgList.end(), comp);
     //pkgList.sort();//从小到大  删除不合法的 //need to modify
     int size = pkgList.size();
     totalPkg = size;
@@ -2271,7 +2271,7 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
             patchNo = basePatch * BASEINTERVAL;
             //check local pkg /sobey/fics/update/fics_v1.0.0_2015.10.14(*)_4005 暂时只检查目录不检查tar.gz的压缩包 fics_v1.0.0_date(skip)_4005
             // i ==> patchNum
-            sprintf(tmpPath, "%s_%s_*_%d_%s", prixMatrix[which], version.c_str(), patchNo+i, optinalname[0]);//正则 need to modify not fics_... client_... "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"; "server_v1.0.0_*_4001_32_Linux2.6.tar.gz
+            sprintf(tmpPath, "%s_%s_*_%d_%s", prixMatrix[which], version.c_str(), patchNo+i, optinalname[0].c_str());//正则 need to modify not fics_... client_... "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"; "server_v1.0.0_*_4001_32_Linux2.6.tar.gz
 
             for (itr = pathDirList.begin(); itr!= pathDirList.end(); itr++)
             {

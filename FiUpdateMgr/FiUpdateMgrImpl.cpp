@@ -58,14 +58,15 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
     tmpVer = baseVer * BASEINTERVAL;
     for (i = 0; i<=patchVer; i++)
     {
-        sprintf(fileNameRE, "%sfics_%s_*_%d.zip", _PATH_PKG_DL, curVer.version, tmpVer+i);//reg skip date eg:fics_v1.0.0_*_4005.zip
+        sprintf(fileNameRE, "fics_%s_*_%d.zip", curVer.version, tmpVer+i);//reg skip date eg:fics_v1.0.0_*_4005.zip
         sprintf(cmdBuf, "find %s -name \'%s\'", _PATH_PKG_DL, fileNameRE);
         if (NULL == (fp = popen(cmdBuf, "r")))
         {
             ut_err("popen error[%d]\n", errno);
             return 2;
         }
-        r = fscanf(fp, "%[^\n]", tmppath);
+        r = fscanf(fp, "%[^\n]s", tmppath);
+        fgetc(fp);
         if (r == 1)
         {
             if (!(fileName = basename(tmppath)))
@@ -299,40 +300,6 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
 	}
 	
 	return 1;
-}
-int gen_optional_pack_name(const ::PlatformInfoEx& PInfo,std::vector<std::string>& names)/*根据客户端传来的平台参数判断客户端需要的安装包的后缀*/
-{
-	char lm[6];
-	lm[0]='_';
-	sprintf(lm+1,"%d",PInfo.OSRunMode);
-	std::string filename1 =lm;
-	filename1+="_";
-	filename1 +=PInfo.OSName;
-	if(strlen((PInfo.OSPackName.in())) >0)
-	{
-		std::string str=(PInfo.OSPackName.in());
-		names.push_back(filename1+str+".tar.gz");
-	}
-	names.push_back(filename1+".tar.gz");
-	if (PInfo.platform == 0 )
-	{
-		std::string str =lm;
-		str+="_Win.tar.gz";
-		names.push_back(str);
-	}
-	if (PInfo.platform == 1 )
-	{
-		std::string str =lm;
-		str+="_Linux.tar.gz";
-		names.push_back(str);
-	}
-	if( PInfo.platform == 2)
-	{
-		std::string str =lm;
-		str+="_Mac.tar.gz";
-		names.push_back(str);
-	}
-	return 0;
 }
 
 ::CORBA::Long FiUpdateMgrImpl::StartupUpdate(const ::PlatformInfoEx& PInfo, ::CORBA::Long which,

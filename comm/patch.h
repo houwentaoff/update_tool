@@ -234,4 +234,5 @@ int getPatchNumFromName(char const *tarName);
  * @return 
  */
 int getPkgList(char const * path, char const * prefix, char const *suffix, const char *version, vector<string> & pkgList);
+int gen_optional_pack_name(const ::PlatformInfoEx& PInfo,std::vector<std::string>& names);/*根据客户端传来的平台参数判断客户端需要的安装包的后缀*/
 #endif

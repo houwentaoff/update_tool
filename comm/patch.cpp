@@ -394,6 +394,7 @@ long date2Long(const char *date)
     {
         if (*date == '.')
         {
+            date++;
             continue;
         }
         ldate *= 10;
@@ -508,3 +509,38 @@ int getPatchNumFromName(char const *tarName)
 err:
     return -1;
 }
+int gen_optional_pack_name(const ::PlatformInfoEx& PInfo,std::vector<std::string>& names)/*根据客户端传来的平台参数判断客户端需要的安装包的后缀*/
+{
+	char lm[6];
+	lm[0]='_';
+	sprintf(lm+1,"%d",PInfo.OSRunMode);
+	std::string filename1 =lm;
+	filename1+="_";
+	filename1 +=PInfo.OSName;
+	if(strlen((PInfo.OSPackName.in())) >0)
+	{
+		std::string str=(PInfo.OSPackName.in());
+		names.push_back(filename1+str+".tar.gz");
+	}
+	names.push_back(filename1+".tar.gz");
+	if (PInfo.platform == 0 )
+	{
+		std::string str =lm;
+		str+="_Win.tar.gz";
+		names.push_back(str);
+	}
+	if (PInfo.platform == 1 )
+	{
+		std::string str =lm;
+		str+="_Linux.tar.gz";
+		names.push_back(str);
+	}
+	if( PInfo.platform == 2)
+	{
+		std::string str =lm;
+		str+="_Mac.tar.gz";
+		names.push_back(str);
+	}
+	return 0;
+}
+
