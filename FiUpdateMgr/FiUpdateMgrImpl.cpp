@@ -47,6 +47,7 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
      *  1. get base num, get patchNum
      *  2. scan a
      *-----------------------------------------------------------------------------*/
+    memset(patchs, 0 ,sizeof(patchSet_t));//客户端 全为0 传过来就不为0
     if (getLocalVersion(&curVer) != 0)
     {
         ut_err("get local ver fail\n");

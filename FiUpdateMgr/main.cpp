@@ -502,6 +502,7 @@ int main(int argc,char** argv)
 	std::string str(_path);
 	str+="FiUpdateMgr.log";
 	freopen(str.c_str(),"a",stdout);
+#if 0
     if (0 == chdir(_path))
     {
         ut_dbg("change cur dir success\n");
@@ -510,6 +511,7 @@ int main(int argc,char** argv)
     {
         ut_err("change cur dir fail\n");
     }    
+#endif
 #ifndef WIN32
     FiEnableCoreDumps();
     pthread_t tid[3];

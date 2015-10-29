@@ -392,7 +392,12 @@ int FiUpdateAssistant::downLossPkg(version_t *netVer, long ldate, int patchNo)
     ::CORBA::Long size;
     string strDate;
     string strPatchNo;
-
+    
+    if (ldate == 0)
+    {
+        ut_err("ldate is null\n");
+        return -1;
+    }
     long2Date(ldate, strDate);
     itoa(patchNo, strPatchNo);
     ut_dbg("prepare to downPkg\n");
@@ -2246,11 +2251,12 @@ int FiUpdateAssistant::UpdateVersionFile()
  * @param serPatchs
  * @param lossPatchs
  *
- * @return 
+ * @return 本地库和远程库一样则返回0，否则返回缺少包的个数
  */
 int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatchs)
 {
     int i=0;
+    int ret = 0;
     bool exist = false;
     vector <string> pathDirList;
     vector <string>::iterator itr;
@@ -2266,7 +2272,7 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
     for (i=0; i<BASEINTERVAL; i++)
     {
         exist = false;
-        if (serPatchs[i] != 0)
+        if (serPatchs[i][0] != 0)//服务器有此包
         {
             patchNo = basePatch * BASEINTERVAL;
             //check local pkg /sobey/fics/update/fics_v1.0.0_2015.10.14(*)_4005 暂时只检查目录不检查tar.gz的压缩包 fics_v1.0.0_date(skip)_4005
@@ -2285,9 +2291,10 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
             {
                 lossPatchs[i][0] = 1;
                 lossPatchs[i][1] = serPatchs[i][1];
+                ret++;
             }
         }
     }
-    return 0;
+    return ret;
 }
 

@@ -89,6 +89,10 @@ int getCurLocalIp(std::string& ip)
     }
     if (-1 == ret)
     {
+		if (localIp.empty())
+		{
+			return ret;
+		}
         ip = inet_ntoa(*((struct in_addr *)&localIp[0]));//ip="0.0.0.0"?
         ret = 0;
     }
@@ -241,7 +245,7 @@ int getLocalIpAll(std::vector<unsigned long>& vecIpAddr)
         return -1;
     }
 
-    char szHostName[128]; 
+	char szHostName[128]={0}; 
 
     err = gethostname(szHostName, 128);
     if( err != 0 ) 
@@ -252,7 +256,8 @@ int getLocalIpAll(std::vector<unsigned long>& vecIpAddr)
 
     struct hostent * pHost; 
     pHost = gethostbyname(szHostName); 
-
+	int errnoa = 1;
+	errnoa = WSAGetLastError();
     for (int i=0; (pHost != NULL) && (pHost->h_addr_list[i] != NULL); i++) 
     { 
         vecIpAddr.push_back(((struct in_addr *)pHost->h_addr_list[i])->s_addr);

@@ -214,12 +214,12 @@ int downLossPatch(version_t *netVer, patchSet_t lossPatchs)
         if (lossPatchs[i][0]!=0)
         {
 #if 1
-            ret = FiUpdateAssistant::getinstance()->downLossPkg(netVer, lossPatchs[i][1], mkVer(getCurBaseVer(netVer->patchNo), i));//down over
+            ret = FiUpdateAssistant::getinstance()->downLossPkg(netVer, lossPatchs[i][1], mkVer(getCurBaseVer(atoi(netVer->patchNo)), i));//down over
 #else
             ret = FiUpdateAssistant::getinstance()->downloadFile(ip, srcFile, dstFile);
 #endif
             long2Date(lossPatchs[i][1], tmpDate);//set to str date  
-            sprintf(dstFile, "fics_%s_%s_%d", netVer->version, tmpDate.c_str(), mkVer(getCurBaseVer(netVer->patchNo), i));//正则 re
+            sprintf(dstFile, "fics_%s_%s_%d", netVer->version, tmpDate.c_str(), mkVer(getCurBaseVer(atoi(netVer->patchNo)), i));//正则 re
             if (ret == 0)
             {
                 ut_dbg("download file %s %s success\n", dstFile);
@@ -440,7 +440,7 @@ int checkAndDownPkg()
     patchSet_t patchs;//memset
     patchSet_t lossPatchs;//memset
     int i = 0;
-    int ret = 0;
+    int ret = 1;
 
     memset(&patchs, 0, sizeof(patchSet_t));
     memset(&lossPatchs, 0, sizeof(patchSet_t));
