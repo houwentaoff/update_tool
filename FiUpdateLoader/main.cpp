@@ -257,8 +257,7 @@ int main(int argc, char **argv)
 #if 0
             FiUpdateAssistant::getinstance()->update();
 #else             
-            FiUpdateAssistant::getinstance()->RollBack(
-            netVer.version, netVer.date, netVer.patchNo);
+            FiUpdateAssistant::getinstance()->RollBack(&netVer);
 #endif
         }
         else

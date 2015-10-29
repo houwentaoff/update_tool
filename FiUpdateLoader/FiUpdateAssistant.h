@@ -72,7 +72,7 @@ public:
 	}
 	int UpdateVersionFile();
     int handl_input(const char* filename);
-    int RollBack(const char*version,const char* date,const char* patchno);
+    int RollBack(version_t *dstVer);
 	bool CheckReg(std::vector<Reg_Layout_t>& regs);
 public:
     static FiUpdateAssistant* getinstance()

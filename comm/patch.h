@@ -25,8 +25,11 @@
 #include "FiUpdateAssistant.h"
 
 #define      BASEINTERVAL       100/* 补丁号间隔为100 则为base全版本 */
-
+#ifndef WIN32
 #define HISTORY        "/sobey/fics/history"            /*  */
+#else
+#define HISTORY        "../history"            /*  */
+#endif
 
 using namespace std;
 //typedef long patchSet_t[100][2];
@@ -235,4 +238,14 @@ int getPatchNumFromName(char const *tarName);
  */
 int getPkgList(char const * path, char const * prefix, char const *suffix, const char *version, vector<string> & pkgList);
 int gen_optional_pack_name(const ::PlatformInfoEx& PInfo,std::vector<std::string>& names);/*根据客户端传来的平台参数判断客户端需要的安装包的后缀*/
+
+/**
+ * @brief  根据文件或者目录名（fileName） 获取当前文件对应的版本号(无hash)
+ *
+ * @param fileName
+ * @param ver
+ *
+ * @return 
+ */
+int getVerFromName(const char *fileName, version_t *ver);
 #endif

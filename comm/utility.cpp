@@ -342,8 +342,9 @@ int writeLocalVer(version_t *ver)
     sprintf(patchVerBuf, 
             "version:%s\n"
             "date:%s\n"
-            "file_name:fics_%s_%s\n",
-            ver->version, ver->date, ver->version, ver->date);
+            "patch:%s\n"
+            "file_name:fics_%s_%s",
+            ver->version, ver->date, ver->patchNo, ver->version, ver->date);
     patchNo = ver->patchNo;
     if (*patchNo)
     {
@@ -843,7 +844,8 @@ int FiGetAllFolder(const char *path,std::vector<std::string>& allfolders)
         FindClose(hFind);  
     }  
     #else
-    if( path == NULL) {
+    if( path == NULL)
+    {
         return -1;
     }
     DIR*   dir=NULL; 

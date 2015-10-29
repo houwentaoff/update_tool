@@ -23,6 +23,7 @@
 #include<stdlib.h>
 #ifndef WIN32
 #include<unistd.h>
+#include <errno.h>
 #endif
 #include<string>
 #include <assert.h>
@@ -436,7 +437,7 @@ int FiUpdateAssistant::downLossPkg(version_t *netVer, long ldate, int patchNo)
     //CORBA::string_free(filename);
     // CORBA::string_free(layout);
     beginDownloadPkg(this->filename.c_str());
-    return 20;  
+    return 0;  
 }
 int FiUpdateAssistant::beginDownloadPkg(const char* filename)
 {
@@ -584,7 +585,10 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     {
         ut_err("get pkg list fail\n");
     }
-    sort(pkgList.begin(), pkgList.end(), comp);
+    if (!pkgList.empty())
+    {
+        sort(pkgList.begin(), pkgList.end(), comp);
+    }
     //pkgList.sort();//从小到大  删除不合法的 //need to modify
     int size = pkgList.size();
     totalPkg = size;
@@ -601,8 +605,10 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
             ut_err("install patch [%s] fail\n", pkgList[i].c_str());
         }
     }
+
     if (ret == 0)
     {
+        UpdateVersionFile();
         installOver = true;
     }
     return ret;
@@ -610,7 +616,7 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
 /**
  * @brief 安装单个补丁包，只有版本信息，补丁号 没有时间
  *
- * @param version
+ * @param fileName : 文件则解压安装，目录则直接运行里面的install.sh
  * @param Unknown
  *
  * @return 
@@ -618,13 +624,31 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
 int FiUpdateAssistant::installSinglePatch(const char *fileName)
 {
     int ret = 0;
-
+    
     /*-----------------------------------------------------------------------------
      *  1. uncompress tar.gz
      *  2. begin install
      *-----------------------------------------------------------------------------*/
     string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz";
     this->filename = fileName;
+#ifndef WIN32
+    struct stat st;
+    char cmdBuf[512] = {0};
+    if (stat(fileName, &st) == -1)
+    {
+        ut_err("stat error num:%d\n", errno);
+    }
+    else
+    {
+        if (S_ISDIR(st.st_mode))
+        {
+//            chdir("/sobey/fics/update");
+            sprintf(cmdBuf, "./%s/install.sh", fileName);
+            system(cmdBuf);
+            return 0;
+        }
+    }
+#endif
     ret = svc();
     ut_dbg("install ret[%d]\n", ret);
 
@@ -1370,12 +1394,12 @@ int FiUpdateAssistant::svc()
     FiWriteFile(fpinstall,(void*)(killself.c_str()),killself.length());
     FiWriteFile(fpinstall,(void*)(killself.c_str()),killself.length());
     FiWriteFile(fpinstall,(void*)(killself.c_str()),killself.length());
-    FiWriteFile(fpinstall,(void*)("taskkill /f  /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /t /im Fiwatchdog.exe \r\n"));
+    FiWriteFile(fpinstall,(void*)("taskkill /f /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /im Fiwatchdog.exe \r\n"));
 	FiWriteFile(fpinstall,(void*)("taskkill /f /t /im scm.exe \r\n"),strlen("taskkill /f /t /im scm.exe \r\n"));
 	FiWriteFile(fpinstall,(void*)("taskkill /f /t /im fitool.exe \r\n"),strlen("taskkill /f /t /im fitool.exe \r\n"));
     FiWriteFile(fpuninstall,(void*)(killself.c_str()),killself.length());
     FiWriteFile(fpuninstall,(void*)(killself.c_str()),killself.length());
-    FiWriteFile(fpuninstall,(void*)("taskkill /f  /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /t /im Fiwatchdog.exe \r\n"));
+    FiWriteFile(fpuninstall,(void*)("taskkill /f /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /im Fiwatchdog.exe \r\n"));
 	FiWriteFile(fpuninstall,(void*)("taskkill /f /t /im scm.exe \r\n"),strlen("taskkill /f /t /im scm.exe \r\n"));
 	FiWriteFile(fpuninstall,(void*)("taskkill /f /t /im fitool.exe \r\n"),strlen("taskkill /f /t /im fitool.exe \r\n"));
 	std::string delUpdate  = "del ";
@@ -1846,8 +1870,12 @@ int FiUpdateAssistant::svc()
         CheckReg(pack.allRegs);
     }
 
-    UpdateVersionFile();
-    addVer2His(&netVer, HISTORY);
+//    UpdateVersionFile();
+    version_t curVer;
+    memset(&curVer, 0, sizeof(version_t));
+    getVerFromName(this->filename.c_str(), &curVer);
+    addVer2His(&curVer, HISTORY);
+    writeLocalVer(&curVer);
     chdir(installpath.c_str());//set current dir
     
     char clean[200];
@@ -1868,7 +1896,7 @@ int FiUpdateAssistant::svc()
         std::string str("reboot\n");
 #endif
         //FiWriteFile(fpinstall,(void*)(str.c_str()),str.length());
-        FiWriteFile(fpuninstall,(void*)(str.c_str()),str.length());
+//        FiWriteFile(fpuninstall,(void*)(str.c_str()),str.length());
         if (curCountInstalled == totalPkg)
         {
             FiExecuteShell(str.c_str());
@@ -1897,7 +1925,7 @@ int FiUpdateAssistant::svc()
             {
                 FiExecuteShell(startupself.c_str());//need to modify
             }
-            FiWriteFile(fpuninstall,(void*)(startupself.c_str()),startupself.length());
+//            FiWriteFile(fpuninstall,(void*)(startupself.c_str()),startupself.length());
             //std::string startupself;
 //            startupself = "nohup "+installpath +"client/fiwatchdog & \n";            
             startupself = installpath +"client/fiwatchdog & \n";            
@@ -1961,22 +1989,24 @@ int FiUpdateAssistant::svc()
     NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
     return 1;
 }
+//server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"
 bool less_second(const std::string & m1, const std::string & m2) 
 {
     typedef std::string::size_type SPOS;
-    SPOS pos1=m1.find("v");
-    SPOS pos2=m2.find("v");
-    SPOS pos3 = m1.find("_",pos1);
-    SPOS pos4 = m2.find("_",pos2);
-    if( pos1== std::string::npos || pos2== std::string::npos||pos3== std::string::npos||pos4== std::string::npos)
+    SPOS posVer1=m1.find("v");//version
+    SPOS posVer2=m2.find("v");
+    SPOS posDate1 = m1.find("_",posVer1);//date
+    SPOS posDate2 = m2.find("_",posVer2);
+
+    if( posVer1== std::string::npos || posVer2== std::string::npos||posDate1== std::string::npos||posDate2== std::string::npos)
     {
         int *i=0;
         *i =0;
     }
-    std::string ver1(&m1[pos1],pos3-pos1);
-    std::string ver2(&m2[pos2],pos4-pos2);
-    std::string date1(&m1[pos3]);
-    std::string date2(&m2[pos4]);
+    std::string ver1(&m1[posVer1],posDate1-posVer1);
+    std::string ver2(&m2[posVer2],posDate2-posVer2);
+    std::string date1(&m1[posDate1]);
+    std::string date2(&m2[posDate2]);
     if(ver1<ver2)
     {
         return true;
@@ -1995,11 +2025,15 @@ bool less_second(const std::string & m1, const std::string & m2)
     }
 
     return true;
-
 }
 
-int FiUpdateAssistant::RollBack(const char*version,const char* date,const char* patchno)
+int FiUpdateAssistant::RollBack(version_t *dstVer)
 {
+    char *version = dstVer->version;
+    char *date    = dstVer->date;
+    char *patchno = dstVer->patchNo;
+    int ret = 0;
+
     std::string prix;
     prix = prixMatrix[which];
     newerver = version;
@@ -2074,31 +2108,33 @@ int FiUpdateAssistant::RollBack(const char*version,const char* date,const char* 
     if(which != CLIENT)
     {
         system("pkill -9 fiwatchdog");
-        system("pkill -9 NameServer");
-        system("pkill -9 ssm");
-        system("pkill -9 massrv");
-        system("pkill -9 DifsRegServer");
         system("pkill -9 WebClient");
-        system("pkill -9 disktools");
         system("pkill -9 java");
+        system("pkill -9 fimds");
+        system("pkill -9 scm");
+        system("pkill -9 fiioctlproxy");
+        system("pkill -9 FicsFormatterEx.exe ");
+        system("ps aux | grep java | grep zoo | perl -lane 'print \"$F[1]\"' | xargs kill -9 \n"),strlen("ps aux | grep java | grep zoo | perl -lane 'print \"$F[1]\"' | xargs kill -9 ");
 
     }
     else
     {
-        std::string killself;
-        killself = installpath +"ficlose \n";
-        system(killself.c_str());
+        system("pkill -9 fiwatchdog");
+        system("pkill -9 fitool");
+        system("pkill -9 scm");
+        system("pkill -9 fiioctlproxy");
     }
-    sleep(30);
  #endif
-
+#ifndef WIN32
+    system("unalias cp");
+#endif
     std::vector<std::string> allfolders;
-    FiGetAllFolder(rootpath.c_str(),allfolders);
+    FiGetAllFolder(rootpath.c_str(), allfolders);
     std::vector<std::string>::iterator iter=allfolders.begin();
     for(;iter!=allfolders.end();++iter)
     {
         std::string& str=*iter;
-        if(str.find("_v")==std::string::npos)
+        if(str.find("_v")==std::string::npos)//清除 非安装包目录  _v
         {
             allfolders.erase(iter);
             iter =allfolders.begin();
@@ -2120,7 +2156,7 @@ int FiUpdateAssistant::RollBack(const char*version,const char* date,const char* 
     {
         ut_dbg("%s ",allfolders[j].c_str());
     }
-    ut_dbg("\n");
+    ut_dbg("\nscan folder over\n");
     fflush(stdout);
     for(int i=0;i<allfolders.size();++i)
     {
@@ -2168,16 +2204,17 @@ int FiUpdateAssistant::RollBack(const char*version,const char* date,const char* 
     //     fputs("\n",fp);
     //     fclose(fp);
 
-    ut_dbg("update finish!\n");
+    ut_dbg("roll back finished!\n");
     fflush(stdout);
 finish:
-    UpdateVersionFile();
+//    ret = installSinglePatch();//need to modify hwt
+    if (ret == 0)
+    {
+        UpdateVersionFile();
+    }
     NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
     return 0;
-
 }
-
-
 
 int FiUpdateAssistant::UpdateVersionFile()
 {

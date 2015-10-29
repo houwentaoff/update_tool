@@ -235,8 +235,8 @@ int downLossPatch(version_t *netVer, patchSet_t lossPatchs)
     }
     i = 0;
     //check patch
-    while (lossPatchs[i++][0] && i<=BASEINTERVAL){};
-    if (i != BASEINTERVAL)
+    while (!lossPatchs[i++][0] && i<=BASEINTERVAL){};
+    if (i <= BASEINTERVAL)
     {
         ret = -2;
         ut_err("patch:%d is not be downed.\n", i);
@@ -414,20 +414,19 @@ long date2Long(const char *date)
 int long2Date(long ldate, string &sdate)
 {
     char sdateBuf[36] = {0};
-    long num = 0;
-    int i=0;
+    int year;
+    int month;
+    int day;
+    
+    day     = ldate%100;
+    ldate  /= 100;
+    month   = ldate%100;
+    ldate  /= 100;
+    year    = ldate;
+    
+    sprintf(sdateBuf, "%d.%0.2d.%0.2d", year, month, day);
+    sdate = sdateBuf;
 
-    while (ldate)
-    {
-        num = ldate % 10;
-        sdateBuf[i++] = '0' + num;
-        ldate /= 10;
-    }
-    sdateBuf[i] = '\0';//01504102
-    while (i--)
-    {
-        sdate += sdateBuf[i];
-    }
     return 0;
 }
 int checkAndDownPkg()
@@ -543,4 +542,54 @@ int gen_optional_pack_name(const ::PlatformInfoEx& PInfo,std::vector<std::string
 	}
 	return 0;
 }
+int getVerFromName(const char *fileName, version_t *ver)
+{
+    char buff[512]  = {0};
+    char *date      = NULL;
+    char *version   = NULL;
+    char *patchNo   = NULL;
+    char *end       = NULL;
 
+    if (!fileName || !ver)
+    {
+        ut_err("filename or ver is null \n");
+        goto err;
+    }
+    
+    strcpy(buff, fileName);
+    version = strstr(buff, "_v");
+    if (!version)
+    {
+        ut_err("get veresion fail\n");
+        goto err;
+    }
+    version ++;
+    date = strchr(version, '_');
+    if (!date)
+    {
+        ut_err("get date fail\n");
+        goto err;
+    }
+    *date  = '\0';
+    date ++;
+    patchNo = strchr(date, '_');
+    if (!patchNo)
+    {
+        ut_err("get patch no fail\n");
+        goto err;
+    }
+    *patchNo = '\0';
+    patchNo ++;
+    end = strchr(patchNo, '_');
+    if (end)
+    {
+        *end = '\0';
+    }
+    sprintf(ver->version, "%s", version);
+    sprintf(ver->date, "%s", date);
+    sprintf(ver->patchNo, "%s", patchNo);
+
+    return 0;
+err:
+    return -1;
+}
