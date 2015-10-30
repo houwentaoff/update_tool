@@ -29,6 +29,7 @@
 #include <libgen.h>
 
 #include <errno.h>
+#include <map>
 
 #define LEN_SHORT            128/*  */
 
@@ -222,7 +223,7 @@ int downLossPatch(version_t *netVer, patchSet_t lossPatchs)
             sprintf(dstFile, "fics_%s_%s_%d", netVer->version, tmpDate.c_str(), mkVer(getCurBaseVer(atoi(netVer->patchNo)), i));//正则 re
             if (ret == 0)
             {
-                ut_dbg("download file %s %s success\n", dstFile);
+                ut_dbg("download file %s success\n", dstFile);
                 lossPatchs[i][0] = 0;
             }
             else
@@ -317,14 +318,15 @@ int getPkgList(char const * path, char const * prefix, char const *suffix, const
     char *fileName = NULL;
     FILE *fp = NULL;
 
-    sprintf(cmdBuf, "find %s -name %s_%s_*.%s", path, prefix, version, suffix);
+    sprintf(cmdBuf, "find %s -name \'%s_%s_*.%s\'", path, prefix, version, suffix);
     if (NULL == (fp = popen(cmdBuf, "r")))
     {
         ut_err("popen fail\n");
         goto err;
     }
-    while (fscanf(fp, "%[^\n]", tmppath) == 1)
+    while (fscanf(fp, "%[^\n]s", tmppath) == 1)
     {
+        fgetc(fp);
         fileName = basename(tmppath);
         pkgList.push_back(fileName);
     }
@@ -592,4 +594,84 @@ int getVerFromName(const char *fileName, version_t *ver)
     return 0;
 err:
     return -1;
+}
+int getMD5FromLocal(const char *fileName, string &localMd5)
+{
+    char cmdBuf[512] = {0};
+    char localMd5Buf[256] = {0};
+    FILE *fp = NULL;
+
+    if (!fileName)
+    {
+        ut_err("file name is null\n");
+        goto err;
+    }
+    if (getMD5FromCache(fileName, localMd5) == 0)
+    {
+        return 0;
+    }
+
+    sprintf(cmdBuf, "md5sum %s", fileName);
+
+    if (NULL ==(fp = popen(cmdBuf, "r")))
+    {
+        ut_err("popen fail\n");
+        goto err;
+    }
+    if (fscanf(fp, "%[^ ]s", localMd5Buf) != 1)//6345b3f685ceefa3630bca9571b17534
+    {
+        pclose(fp);
+        goto err;
+    }
+    pclose(fp);
+    if (strlen(localMd5Buf) < 32)
+    {
+        ut_err("md5 fail\n");
+        goto err;
+    }
+    localMd5 = localMd5Buf;
+    if (addEleMD52Cache(fileName, localMd5) < 0)
+    {
+        ut_err("update md5 cache fail\n");
+    }
+
+    return 0;
+err:
+    return -1;
+}
+static map<string, string>MD5Cache; 
+
+int getMD5FromCache(const char* filename, string &localMd5)
+{
+    map<string, string>::iterator it;
+//file name -> basename(filename)?
+    it = MD5Cache.find(filename);
+    if (it==MD5Cache.end())
+    {
+        return -1;
+    }
+    localMd5 = it->second;
+
+    return 0;
+}
+int addEleMD52Cache(const char* filename, string &localMd5)
+{
+    MD5Cache.insert(make_pair(filename, localMd5));
+    ut_dbg("md5 cache: add ele file:%s val:%s\n", filename, localMd5.c_str());
+    return 0;
+}
+int delEleMD52Cache(const char* filename, string &localMd5)
+{
+    map<string, string>::iterator it;
+
+    it = MD5Cache.find(filename);    
+    if (it==MD5Cache.end())
+    {
+        ut_dbg("md5 cache: del ele file:%s val:%s fail!!!\n", filename, localMd5.c_str());
+        return -1;
+    }
+    MD5Cache.erase(it);
+    ut_dbg("md5 cache: del ele file:%s val:%s\n", filename, localMd5.c_str());
+
+    return 0;
 }

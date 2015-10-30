@@ -571,14 +571,14 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
      *-----------------------------------------------------------------------------*/
     string fileName;
     vector<string> pkgList;
-    char *suffix = "tar.gz";
-    char *prefix = "server";
-    char *verTest    = ver->version;//"v1.0.0";
-    int i = 0;
-    int ret = 0;
+    char *suffix     = "tar.gz";
+    const char *prefix     = "server";
+    char *verTest    = netVer.version;//"v1.0.0"; 不能为空""
+    int i            = 0;
+    int ret          = 0;
     string patchNo;
-    char *path = "./";
-    string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz";
+    char *path       = "./";
+    string pkgName   = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz";
     int localPatchNo = atoi(ver->patchNo);
     //scan all tar.gz
     if (getPkgList(path, prefix, suffix, verTest, pkgList) < 0)
@@ -588,6 +588,10 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     if (!pkgList.empty())
     {
         sort(pkgList.begin(), pkgList.end(), comp);
+    }
+    else
+    {
+        ut_err("there is no pkg?\n");
     }
     //pkgList.sort();//从小到大  删除不合法的 //need to modify
     int size = pkgList.size();
@@ -654,6 +658,34 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
 
     return 0;
 }
+int FiUpdateAssistant::getMD5FromRemote(const char *fileName, string &remoteMD5)
+{
+    int rpcRet = 0 ;
+    int trycnt = 0;
+    string md5Val;
+    ::CORBA::String_var outmd5Value;
+
+    while( (rpcRet ==0)&& trycnt<2 )
+    {
+        trycnt++;
+        if (trycnt > 1)
+        {
+            ut_dbg("Attempt to connect server [%d]\n" , trycnt);
+        }
+        MAKE_RPC_INVOKE(rHandle, getMD5FromFile(fileName, outmd5Value), rpcRet);
+    }
+    if( rpcRet == 0)
+    {
+        ut_dbg("network crash,stopping update line:%d\n", __LINE__);
+        fflush(stdout);
+        return -1;
+    }
+    else
+    {
+        remoteMD5 = outmd5Value.inout();
+    }    
+    return 0;
+}
 int FiUpdateAssistant::update()
 {
     char* filename;
@@ -709,7 +741,7 @@ int FiUpdateAssistant::queryPatchs(patchSet_t patchs)
     int ret =0;
     string version;
     version_t curVer;
-    
+
     if (!patchs)
     {
         ut_err("patchs is null\n");
@@ -2294,18 +2326,29 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
 {
     int i=0;
     int ret = 0;
+    int rpcRet = 0;
+    int trycnt=0;
     bool exist = false;
+    const char *prefix = prixMatrix[which];
+    vector <string> pkgList;
     vector <string> pathDirList;
     vector <string>::iterator itr;
     char tmpPath[256]={0};
     string version = netVer->version;
+    string remoteMD5;
+    string localMd5;
     int patchNo = 0;
+    
     int basePatch = getCurBaseVer(atoi(netVer->patchNo));
 	std::vector<std::string> optinalname;
 	gen_optional_pack_name(PInfo,optinalname);
 
     getDirList("./", pathDirList);//get dir list
 
+    if (getPkgList("./", prefix, "tar.gz", version.c_str(), pkgList) < 0)
+    {
+        ut_err("get pkg list fail\n");
+    }
     for (i=0; i<BASEINTERVAL; i++)
     {
         exist = false;
@@ -2314,14 +2357,40 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
             patchNo = basePatch * BASEINTERVAL;
             //check local pkg /sobey/fics/update/fics_v1.0.0_2015.10.14(*)_4005 暂时只检查目录不检查tar.gz的压缩包 fics_v1.0.0_date(skip)_4005
             // i ==> patchNum
-            sprintf(tmpPath, "%s_%s_*_%d_%s", prixMatrix[which], version.c_str(), patchNo+i, optinalname[0].c_str());//正则 need to modify not fics_... client_... "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"; "server_v1.0.0_*_4001_32_Linux2.6.tar.gz
-
+            sprintf(tmpPath, "%s_%s_*_%d%s", prixMatrix[which], version.c_str(), patchNo+i, optinalname[0].c_str());//正则 need to modify not fics_... client_... "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"; "server_v1.0.0_*_4001_32_Linux2.6.tar.gz
+            //first : match dir
             for (itr = pathDirList.begin(); itr!= pathDirList.end(); itr++)
             {
                 if (matchRE(itr->c_str(), tmpPath))
                 {
                     exist = true;
                     break;
+                }
+            }
+            //second : match tar.gz
+            if (!exist && !pkgList.empty())
+            {
+                for (itr = pkgList.begin(); itr!=pkgList.end(); itr++)
+                {
+                    if (matchRE(itr->c_str(), tmpPath))
+                    {
+                        /*-----------------------------------------------------------------------------
+                         *  1. get md5sum from server
+                         *  2. compar = true; break; 
+                         *-----------------------------------------------------------------------------*/
+                        remoteMD5 = "";
+                        localMd5  = "";
+                        if (getMD5FromRemote(itr->c_str(), remoteMD5) < 0)
+                        {
+                            ut_err("get remote md5 fail\n");
+                        }
+                        getMD5FromLocal(itr->c_str(), localMd5);
+                        if (remoteMD5 == localMd5)
+                        {
+                            exist = true;
+                            break;
+                        }
+                    }
                 }
             }
             if (!exist)//目录不存在 1. get dir name. 2. cmp file name

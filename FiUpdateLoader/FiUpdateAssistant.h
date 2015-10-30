@@ -88,6 +88,7 @@ public:
     int installSinglePatch(const char *fileName);
     int queryPatchs(patchSet_t patchs);
     int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatchs);
+    int getMD5FromRemote(const char *fileName, std::string &remoteMD5);
 
 private:
     FiRpcCli<FiUpdateMgr> *cli;

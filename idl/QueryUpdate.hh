@@ -309,6 +309,7 @@ public:
   ::CORBA::Long starupTrans(const char* fileName, ::CORBA::Long& size, ::CORBA::LongLong& fileRef);
   ::CORBA::Long transFile(::CORBA::LongLong fileRef, ::CORBA::Long packid, ::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag);
   ::CORBA::Long queryPatchs(const char* version, ::patchSet_t patchs);
+  ::CORBA::Long getMD5FromFile(const char* fileName, ::CORBA::String_out md5Value);
 
   inline _objref_FiUpdateMgr()  { _PR_setobj(0); }  // nil
   _objref_FiUpdateMgr(omniIOR*, omniIdentity*);
@@ -348,6 +349,7 @@ public:
   virtual ::CORBA::Long starupTrans(const char* fileName, ::CORBA::Long& size, ::CORBA::LongLong& fileRef) = 0;
   virtual ::CORBA::Long transFile(::CORBA::LongLong fileRef, ::CORBA::Long packid, ::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag) = 0;
   virtual ::CORBA::Long queryPatchs(const char* version, ::patchSet_t patchs) = 0;
+  virtual ::CORBA::Long getMD5FromFile(const char* fileName, ::CORBA::String_out md5Value) = 0;
   
 public:  // Really protected, workaround for xlC
   virtual _CORBA_Boolean _dispatch(omniCallHandle&);

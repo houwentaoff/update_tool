@@ -14,6 +14,37 @@ FiUpdateMgrImpl::FiUpdateMgrImpl()
 FiUpdateMgrImpl::~FiUpdateMgrImpl()
 {
 }
+::CORBA::Long FiUpdateMgrImpl::getMD5FromFile(const char* fileName, ::CORBA::String_out md5Value)
+{
+    string fullName = "";
+
+    string localMD5Val = "";
+    char pathTmp[256] = {0};
+    version_t locVer;
+    if (!fileName)
+    {
+        ut_err("argv fileName is NULL!\n");
+        return 0;
+    }
+    memset(&locVer, 0, sizeof(version_t));
+    if (getVerFromName(fileName, &locVer) < 0)
+    {
+        ut_err("get ver from name fail?\n");
+        return 0;
+    }
+    
+    //eg:sobey/fics/download/fics_v1.0.0_2015.09.19_4008/server_v1.0.0_2015.09.19_4008_64_Linux2.6.tar.gz
+    sprintf(pathTmp, "%sfics_%s_%s_%s/", _PATH_PKG_DL, locVer.version, locVer.date, locVer.patchNo);
+    fullName += pathTmp;
+    fullName += fileName;
+    if (getMD5FromLocal(fullName.c_str(), localMD5Val) < 0)//from cache not file
+    {
+        ut_err("get md5 fail\n");
+    }
+
+    md5Value = CORBA::string_dup(localMD5Val.c_str());
+    return 0;
+}
 /**
  * @brief   根据客户端的版本信息，返回客户端需要的版本 集合(链表)
  *
@@ -334,7 +365,7 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
 	std::string fname;
 	for (int i=0;i<optinalname.size();++i)
 	{
-		std::string name = prix+"_"+version+"_"+date+"_"+patchno+"_"+optinalname[i];
+		std::string name = prix+"_"+version+"_"+date+"_"+patchno+optinalname[i];
 		std::string fullname(buff);
 #ifdef WIN32
 		fullname+=folder+"\\"+name;
@@ -363,7 +394,7 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
 		return 1;
 	}
 	
-	std::string name = prix+"_"+version+"_"+date+"_"+patchno+"_"+fname;
+	std::string name = prix+"_"+version+"_"+date+"_"+patchno+fname;
 	std::string fullname(buff);
 #ifdef WIN32
 	fullname+=folder+"\\"+name;

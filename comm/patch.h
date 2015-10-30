@@ -226,12 +226,12 @@ int mkVer(int baseVer, int patchVer);
  */
 int getPatchNumFromName(char const *tarName);
 /**
- * @brief 获取包列表
+ * @brief 根据传入的v1.0.0获取包列表
  *
  * @param path
  * @param prefix
  * @param suffix
- * @param version
+ * @param version 不能为NULL?服务端version
  * @param pkgList
  *
  * @return 
@@ -248,4 +248,40 @@ int gen_optional_pack_name(const ::PlatformInfoEx& PInfo,std::vector<std::string
  * @return 
  */
 int getVerFromName(const char *fileName, version_t *ver);
+/**
+ * @brief 从文件中获取md5值 先从cache中获取，失败则从文件中获取
+ *
+ * @param fileName
+ * @param localMd5
+ *
+ * @return 0:success  -1:fail
+ */
+int getMD5FromLocal(const char *fileName, string &localMd5);
+/**
+ * @brief 从cache中获取文件的md5值
+ *
+ * @param filename
+ * @param localMd5
+ *
+ * @return 
+ */
+int getMD5FromCache(const char* filename, string &localMd5);
+/**
+ * @brief 向cache中增加新MD5值
+ *
+ * @param filename
+ * @param localMd5
+ *
+ * @return 
+ */
+int addEleMD52Cache(const char* filename, string &localMd5);
+/**
+ * @brief 删除map中文件对应的MD5值
+ *
+ * @param filename
+ * @param localMd5
+ *
+ * @return 
+ */
+int delEleMD52Cache(const char* filename, string &localMd5);
 #endif

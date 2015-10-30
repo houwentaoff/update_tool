@@ -644,6 +644,86 @@ _0RL_lcfn_1a070d6de3072870_a0000000(omniCallDescriptor* cd, omniServant* svnt)
 
 
 }
+// Proxy call descriptor class. Mangled signature:
+//  _clong_i_cstring_o_cstring
+class _0RL_cd_1a070d6de3072870_b0000000
+  : public omniCallDescriptor
+{
+public:
+  inline _0RL_cd_1a070d6de3072870_b0000000(LocalCallFn lcfn,const char* op_,size_t oplen,_CORBA_Boolean upcall=0):
+     omniCallDescriptor(lcfn, op_, oplen, 0, _user_exns, 0, upcall)
+  {
+    
+  }
+  
+  void marshalArguments(cdrStream&);
+  void unmarshalArguments(cdrStream&);
+
+  void unmarshalReturnedValues(cdrStream&);
+  void marshalReturnedValues(cdrStream&);
+  
+  
+  static const char* const _user_exns[];
+
+  ::CORBA::String_var arg_0_;
+  const char* arg_0;
+  ::CORBA::String_var arg_1;
+  ::CORBA::Long result;
+};
+
+void _0RL_cd_1a070d6de3072870_b0000000::marshalArguments(cdrStream& _n)
+{
+  _n.marshalString(arg_0,0);
+
+}
+
+void _0RL_cd_1a070d6de3072870_b0000000::unmarshalArguments(cdrStream& _n)
+{
+  arg_0_ = _n.unmarshalString(0);
+  arg_0 = arg_0_.in();
+
+}
+
+void _0RL_cd_1a070d6de3072870_b0000000::marshalReturnedValues(cdrStream& _n)
+{
+  result >>= _n;
+  _n.marshalString(arg_1,0);
+
+}
+
+void _0RL_cd_1a070d6de3072870_b0000000::unmarshalReturnedValues(cdrStream& _n)
+{
+  (::CORBA::Long&)result <<= _n;
+  arg_1 = _n.unmarshalString(0);
+
+}
+
+const char* const _0RL_cd_1a070d6de3072870_b0000000::_user_exns[] = {
+  0
+};
+
+// Local call call-back function.
+static void
+_0RL_lcfn_1a070d6de3072870_c0000000(omniCallDescriptor* cd, omniServant* svnt)
+{
+  _0RL_cd_1a070d6de3072870_b0000000* tcd = (_0RL_cd_1a070d6de3072870_b0000000*)cd;
+  _impl_FiUpdateMgr* impl = (_impl_FiUpdateMgr*) svnt->_ptrToInterface(FiUpdateMgr::_PD_repoId);
+  tcd->result = impl->getMD5FromFile(tcd->arg_0, tcd->arg_1.out());
+
+
+}
+
+::CORBA::Long _objref_FiUpdateMgr::getMD5FromFile(const char* fileName, ::CORBA::String_out md5Value)
+{
+  _0RL_cd_1a070d6de3072870_b0000000 _call_desc(_0RL_lcfn_1a070d6de3072870_c0000000, "getMD5FromFile", 15);
+  _call_desc.arg_0 = fileName;
+
+  _invoke(_call_desc);
+  md5Value = _call_desc.arg_1._retn();
+  return _call_desc.result;
+
+
+}
 _pof_FiUpdateMgr::~_pof_FiUpdateMgr() {}
 
 
@@ -717,6 +797,14 @@ _impl_FiUpdateMgr::_dispatch(omniCallHandle& _handle)
 
     _0RL_cd_1a070d6de3072870_90000000 _call_desc(_0RL_lcfn_1a070d6de3072870_a0000000, "queryPatchs", 12, 1);
     _call_desc.arg_1 = _call_desc.arg_1_;
+    _handle.upcall(this,_call_desc);
+    return 1;
+  }
+
+  if( omni::strMatch(op, "getMD5FromFile") ) {
+
+    _0RL_cd_1a070d6de3072870_b0000000 _call_desc(_0RL_lcfn_1a070d6de3072870_c0000000, "getMD5FromFile", 15, 1);
+    
     _handle.upcall(this,_call_desc);
     return 1;
   }
