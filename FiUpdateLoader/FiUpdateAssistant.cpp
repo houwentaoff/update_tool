@@ -627,7 +627,9 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
  */
 int FiUpdateAssistant::installSinglePatch(const char *fileName)
 {
-    int ret = 0;
+    int  ret = 0;
+    char *suffix =".tar.gz";
+    char *end = NULL;
     
     /*-----------------------------------------------------------------------------
      *  1. uncompress tar.gz
@@ -653,6 +655,14 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
         }
     }
 #endif
+    end = strstr((char*)fileName, suffix);
+    if (!end)
+    {
+        ut_err("pkg suffix is not tar.gz?\n");
+        return -1;
+    }
+    this->dirfilename= std::string(fileName,end-fileName);
+    
     ret = svc();
     ut_dbg("install ret[%d]\n", ret);
 

@@ -130,7 +130,7 @@ int addVer2His(version_t *newVer, const char * path)
         ut_err("newVer or path is NULL\n");
         goto err;
     }
-    sprintf(curOpVer, "%s\n", newVer->reserved.hash);
+    sprintf(curOpVer, "fics %s %s %s\n", newVer->version, newVer->date, newVer->patchNo);
     fp = fopen(path, "a+");
     if (!fp)
     {
