@@ -502,7 +502,7 @@ int getPatchNumFromName(char const *tarName)
     patchNo++;
     while (*patchNo != '_')
     {
-        patchNoBuf[i++] = *patchNo;
+        patchNoBuf[i++] = *(patchNo++);
     }
     patchNoBuf[i] = '\0';
     ipatchNo = atoi(patchNoBuf);
