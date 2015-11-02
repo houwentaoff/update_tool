@@ -18,7 +18,10 @@
 #endif
 #include<assert.h>
 #include <string.h>
-
+#ifndef WIN32
+#define  stricmp   strcmp              /*  */
+#define  _stricmp  strcmp               /*  */
+#endif
 int load_layoutxml(std::string& xmlfname,std::string& nodename,std::vector<std::string>&layouts)
 {
 	char buff[256];
