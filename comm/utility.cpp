@@ -47,7 +47,9 @@
 #endif
 #include <algorithm>
 #include <time.h>
-
+#ifdef BUFSIZ
+#undef BUFSIZ
+#endif
 #define BUFSIZ          512            /*  */
 #ifndef WIN32
 #define TIMEZONE_OFFSET(foo) foo->tm_gmtoff
@@ -103,7 +105,7 @@ int getCurLocalIp(std::string& ip)
 int getIPfromXml(std::vector<nodeIp_t>& vecIpAddr)
 {
     CMarkup xml;
-    char *cfgConfig = "../config/FicsConfig.xml";
+    const char *cfgConfig = "../config/FicsConfig.xml";
     std::string strTmp;
     int ret = -1;
     char cmdBuf[256];
