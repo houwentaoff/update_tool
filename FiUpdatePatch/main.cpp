@@ -23,9 +23,11 @@
 #include <string>
 #include <vector>
 #include <getopt.h>
+#include <libgen.h>
 #include "string.h"
 #include "include.h"
 #include "utility.h"
+#include <unistd.h>
 
 using namespace std;
 
@@ -213,6 +215,7 @@ int mk_xml(vector<patchEle_t> &list)
     for (itr=list.begin(); itr!=list.end(); itr++)
     {
         pele = &(*itr);
+        memset(eleBuf, 0, sizeof(eleBuf));
 //        std::string record = isreg?"<reg name=\"":"<file name=\"";
         sprintf(eleBuf, "<file name=\"%s\" action=\"%c\" location=\"%s\"/>",
                 pele->src_name,
@@ -223,6 +226,7 @@ int mk_xml(vector<patchEle_t> &list)
     }
     fputs("</fiupdate>", fp);
     fputs("\n", fp);
+    fclose(fp);
 
     return 0;
 err:
@@ -244,7 +248,8 @@ int init_params(int argc, char *params[])
             print_usage(stderr, 0);
             break;
         case 'v':    
-            strcpy(upparams.version.version, optarg);
+            strcpy(upparams.version.version, "v");
+            strcat(upparams.version.version, optarg);
             break;
         case 'd':
             strcpy(upparams.version.date, optarg);
@@ -339,9 +344,22 @@ int tar_pkg(vector<patchEle_t> &list)
     char const *platform[] = {"Linux", "WIN", NULL};
     char const *format[] = {"tar.gz", "zip", NULL};
     char tmp_path[512]={0};
+    char pwd[512] = {0};
+    char *dir_name  = NULL;
     std::vector<patchEle_t>::iterator itr;
+    string file_name;
+    if (!getcwd(pwd, sizeof(pwd)))
+    {
+        ut_err("get pwd fail\n");
+        goto err;
+    }
+    if (chdir("/tmp") < 0)
+    {
+        ut_err("chdir fail\n");
+        goto err;
+    }
 
-    sprintf(tmp_path, "/tmp/%s_%s_%s_%s_%s_%s",
+    sprintf(tmp_path, "%s_%s_%s_%s_%s_%s",
             prefix[upparams.ptype], upparams.version.version,
             upparams.version.date, upparams.version.patchNo,
             bits[upparams.bit], platform[upparams.pf_type]
@@ -350,26 +368,33 @@ int tar_pkg(vector<patchEle_t> &list)
     {
         sprintf(&tmp_path[strlen(tmp_path)], "%s", upparams.kernel);
     }
- 
+    sprintf(cmd_buf, "rm  %s -rf", tmp_path);
+    system(cmd_buf);
     sprintf(cmd_buf, "mkdir -p %s", tmp_path);
     system(cmd_buf);
     //mkdir -p /tmp/server_v1.0.0_2015.09.14_4000_64_Linux2.6.tar.gz
 //    load_xml();
     for (itr=list.begin(); itr != list.end(); itr++)
     {
+        file_name = itr->src_name;
+        dir_name = dirname((char *)file_name.c_str());
+        sprintf(cmd_buf, "install -d -v %s/%s",
+                tmp_path, dir_name);
+        system(cmd_buf);
         //cp upparams.path/itr->src_name      tmp_path/itr->src_name      -rf
         sprintf(cmd_buf, 
-                "cp %s/%s %s/  -rf", 
+                "install -D -p -v  %s/%s %s/%s/ ", 
                 upparams.path,
                 itr->src_name,
-                tmp_path);
+                tmp_path,
+                dir_name);
         system(cmd_buf);
     }
     //tar pkg
     //1. tar -zcvf tmp_path.tar.gz tmp_path
     //2. rm  tmp_path
-    sprintf(cmd_buf, "tar -zcvf %s.tar.gz %s",
-            tmp_path, tmp_path);
+    sprintf(cmd_buf, "tar -zcvf %s/%s.tar.gz %s",
+            pwd, tmp_path, tmp_path);
     system(cmd_buf);
     if (!upparams.debug)
     {
@@ -377,6 +402,8 @@ int tar_pkg(vector<patchEle_t> &list)
         system(cmd_buf);
     }
     return 0;
+err:
+    return -1;
 }
 int zip_pkg()
 {
