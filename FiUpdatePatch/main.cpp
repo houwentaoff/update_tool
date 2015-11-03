@@ -32,6 +32,8 @@
 using namespace std;
 
 #define LEN_NAME            128/*  */
+#define XML_DEFAULT         "update.xml"   /*  */
+#define DEFAULT_LOG_PATH    "log.txt"      /*  */
 
 static const char* program_name;
 static struct option long_options[] = {
@@ -49,9 +51,11 @@ static struct option long_options[] = {
     {"path", 1, NULL, 'P'}, 
     {"debug", 0, NULL, 'D'}, 
     {"help", 0, NULL, 'h'}, 
+    {"verbose", 0, NULL, '%'},
+    {"logpath", 1, NULL, '^'},
     {0, 0, 0, 0}    
 };
-static const char *short_options = "v:d:!:@:#:k:b:f:csmP:hD";
+static const char *short_options = "v:d:!:@:#:%^:k:b:f:csmP:hD";
 typedef enum{
     TAR_GZ,
     ZIP,
@@ -87,10 +91,12 @@ static struct {
     bit_e bit; 
     p_type_e ptype;
     format_e format;
+    bool verbose;
     bool debug;
     char path[256];
     char kernel[32];
     char conf_file[256];
+    char log_path[256];
 }upparams;
 
 typedef struct patchEle
@@ -116,12 +122,14 @@ static void print_usage(FILE *f, int exit_code)
             "\t -c/s/m          client/server/mas         \n"
             "\t --format        pkg format:tar.gz  default(tar.gz)       \n"
             "\t -P              path of release.        default(./) \n"
+            "\t --verbose       verbosely list files processed \n"
+            "\t --logpath       path of update log\n"
             "\t -D              debug         \n"
-            "\t example:linux server:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f ./ser_linux_update.conf -P /fics_release/ -b 32 -k 2.6 --platform linux  -s \n"
-            "\t example:linux master:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f ./mas_linux_update.conf -P /fics_release/ -b 32 -k 2.6 --platform linux  -m\n"
-            "\t example:windows client:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f ./cli_win_update.conf -P /fics_release/ -b 32 --platform win \n"
-            "\t example:linux client:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f ./cli_linux_update.conf -P /fics_release/ -b 64 -k 2.6 --platform linux  -c \n"
-            "\t example:zip:%s --format zip -v 1.0.0 -d 2015.09.14 --pn 4000 -P ./ \n",
+            "\t linux server:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f ../config/ser_linux_update.conf -P /fics_release/fics_v1.1/ -b 64 -k 2.6 --platform linux  -s --verbose\n"
+            "\t linux master:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f  ../config/mas_linux_update.conf -P /fics_release/fics_v1.1/ -b 64 -k 2.6 --platform linux  -m --verbose\n"
+            "\t windows client:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f  ../config/cli_win_update.conf -P /fics_release/fics_v1.1/ -b 64 --platform win --verbose\n"
+            "\t linux client:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f  ../config/cli_linux_update.conf -P /fics_release/fics_v1.1/ -b 64 -k 2.6 --platform linux  -c --verbose\n"
+            "\t zip:%s --format zip -v 1.0.0 -d 2015.09.14 --pn 4000 -P ./ \n",
             program_name, program_name, program_name, program_name, program_name);
     exit(exit_code);
 }
@@ -131,6 +139,7 @@ int load_conf(char const *conf, vector<patchEle_t> &list)
     int r = 0;
     patchEle_t eleTmp;
     char buf[100] = {0};
+    char *del = NULL;
 
     if (!conf)
     {
@@ -181,6 +190,11 @@ int load_conf(char const *conf, vector<patchEle_t> &list)
         {
             goto conf_err;
         }
+        if (del = strchr(buf, '\r'))
+        {
+            *del = '\0';
+            del  = NULL;
+        }
         strcpy(eleTmp.dst_name, buf);
         //insert to xml
         fgetc(fp);
@@ -198,7 +212,7 @@ err:
 int mk_xml(vector<patchEle_t> &list)
 {
     FILE *fp;
-    const char *xml_name = "update.xml";
+    const char *xml_name = XML_DEFAULT;
     char *p;
     char eleBuf[512] = {0};
     std::vector<patchEle_t>::iterator itr;
@@ -239,6 +253,11 @@ int init_params(int argc, char *params[])
 
     opterr = 0;
     program_name = params[0];    
+    if (argc == 1)
+    {
+        ut_err("please input params\n");
+        goto err;
+    }
     while ((ch = getopt_long(argc, params, short_options, long_options, &option_index)) != -1) {
         switch (ch) {
         case 'D':
@@ -262,7 +281,7 @@ int init_params(int argc, char *params[])
             {
                 upparams.pf_type = LINUX;
             }
-            else if (strcmp(optarg, "windows") == 0)
+            else if (strcmp(optarg, "win") == 0)
             {
                 upparams.pf_type = WINDOWS;
             }else
@@ -279,7 +298,7 @@ int init_params(int argc, char *params[])
             {
                 upparams.bit = _BIT32;
             }
-            else if (strcmp(optarg, "64"))
+            else if (strcmp(optarg, "64") == 0)
             {
                 upparams.bit = _BIT64;
             }
@@ -316,6 +335,12 @@ int init_params(int argc, char *params[])
                 goto err;
             }
             break;
+        case '%':
+            upparams.verbose = true;
+            break;
+        case '^':
+            strcpy(upparams.log_path, optarg);
+            break;
         case 'P'://path
             strcpy(upparams.path, optarg);
             break;
@@ -327,6 +352,12 @@ int init_params(int argc, char *params[])
     if (strlen(upparams.path) == 0)
     {
         strcpy(upparams.path, "./");
+        ut_dbg("load default path: %s\n", "./");
+    }
+    if (strlen(upparams.log_path) == 0)
+    {
+        strcpy(upparams.log_path, DEFAULT_LOG_PATH);
+        ut_dbg("load default log_path: %s\n", DEFAULT_LOG_PATH);
     }
     if (upparams.pf_type == WINDOWS)
     {
@@ -341,7 +372,7 @@ int tar_pkg(vector<patchEle_t> &list)
     char cmd_buf[512] = {0};
     char const *prefix[]={"server", "client", "Massvr", NULL};
     char const *bits[]={"64","32", NULL};
-    char const *platform[] = {"Linux", "WIN", NULL};
+    char const *platform[] = {"Linux", "Win", NULL};
     char const *format[] = {"tar.gz", "zip", NULL};
     char tmp_path[512]={0};
     char pwd[512] = {0};
@@ -373,29 +404,66 @@ int tar_pkg(vector<patchEle_t> &list)
     sprintf(cmd_buf, "mkdir -p %s", tmp_path);
     system(cmd_buf);
     //mkdir -p /tmp/server_v1.0.0_2015.09.14_4000_64_Linux2.6.tar.gz
-//    load_xml();
     for (itr=list.begin(); itr != list.end(); itr++)
     {
+        if (itr->action == DEL)
+        {
+            continue;
+        }
         file_name = itr->src_name;
         dir_name = dirname((char *)file_name.c_str());
-        sprintf(cmd_buf, "install -d -v %s/%s",
-                tmp_path, dir_name);
+        if (upparams.verbose)
+        {
+            sprintf(cmd_buf, "install -d -v %s/%s",
+                    tmp_path, dir_name);
+        }
+        else
+        {
+            sprintf(cmd_buf, "install -d  %s/%s",
+                    tmp_path, dir_name);
+        }
         system(cmd_buf);
         //cp upparams.path/itr->src_name      tmp_path/itr->src_name      -rf
-        sprintf(cmd_buf, 
-                "install -D -p -v  %s/%s %s/%s/ ", 
-                upparams.path,
-                itr->src_name,
-                tmp_path,
-                dir_name);
+        if (upparams.verbose)
+        {
+            sprintf(cmd_buf, 
+                    "install -D -p -v  %s/%s %s/%s/ ", 
+                    upparams.path,
+                    itr->src_name,
+                    tmp_path,
+                    dir_name);
+        }
+        else
+        {
+            sprintf(cmd_buf, 
+                    "install -D -p  %s/%s %s/%s/ ", 
+                    upparams.path,
+                    itr->src_name,
+                    tmp_path,
+                    dir_name);
+        }
         system(cmd_buf);
     }
     //tar pkg
-    //1. tar -zcvf tmp_path.tar.gz tmp_path
-    //2. rm  tmp_path
+    //1. cp update.xml
+    //2. tar -zcvf tmp_path.tar.gz tmp_path
+    //3. rm  tmp_path
+    if (upparams.verbose)
+    {
+        sprintf(cmd_buf, "install -p -v %s/%s %s/",
+                pwd, XML_DEFAULT,tmp_path);
+    }
+    else
+    {
+        sprintf(cmd_buf, "install -p  %s/%s %s/",
+                pwd, XML_DEFAULT,tmp_path);
+    }
+    system(cmd_buf);
+    printf("\nbegin tar pkg.\n");
     sprintf(cmd_buf, "tar -zcvf %s/%s.tar.gz %s",
             pwd, tmp_path, tmp_path);
     system(cmd_buf);
+    printf("tar pkg over.\n");
     if (!upparams.debug)
     {
         sprintf(cmd_buf, "rm %s -rf", tmp_path);
@@ -427,20 +495,30 @@ int zip_pkg()
     sprintf(cmd_buf, "mkdir -p %s", dir_name);
     system(cmd_buf);
 
-    sprintf(re_file, "server_%s_*_%s*",
+    sprintf(re_file, "server_%s_*_%s*.tar.gz",
             upparams.version.version,
             upparams.version.patchNo);
     sprintf(cmd_buf, "cp -a %s %s", re_file, dir_name);
     system(cmd_buf);
-    sprintf(re_file, "Massvr_%s_*_%s*",
+    sprintf(re_file, "Massvr_%s_*_%s*.tar.gz",
             upparams.version.version,
             upparams.version.patchNo);
     sprintf(cmd_buf, "cp -a %s %s", re_file, dir_name);
     system(cmd_buf);
-    sprintf(re_file, "client_%s_*_%s*",
+    sprintf(re_file, "client_%s_*_%s*.tar.gz",
             upparams.version.version,
             upparams.version.patchNo);
     sprintf(cmd_buf, "cp -a %s %s", re_file, dir_name);    
+    system(cmd_buf);
+    //cp log.txt to zip pkg
+    if (upparams.verbose)
+    {
+        sprintf(cmd_buf, "install -p -v %s %s/log.txt", upparams.log_path, dir_name);
+    }
+    else
+    {
+        sprintf(cmd_buf, "install -p %s %s/log.txt", upparams.log_path, dir_name);
+    }
     system(cmd_buf);
     sprintf(cmd_buf, "zip -r \"%s.zip\" %s", dir_name, dir_name);
     system(cmd_buf);
@@ -456,7 +534,7 @@ int zip_pkg()
 int main ( int argc, char *argv[] )
 {
     vector<patchEle_t> list;
-    
+
     memset(&upparams, 0, sizeof(upparams));
 
     if (init_params(argc, argv)<0)
