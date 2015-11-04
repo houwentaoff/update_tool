@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <libgen.h>
 #endif
 
 #ifdef _WIN32
@@ -1308,12 +1309,16 @@ int FiUpdateAssistant::svc()
     std::string rootpath;
     string pkgDir;//rootDir + update + server_v1.0.0
     string rootDir;//->/sobey/fics
-    string RelativeDstDir;//->  dirname: libs ,win_client/x32
-    string pwdFullPath;//rootDir + RelativeDstDir + FileName
+    string RelativePkgDir;//->  dirname: libs/ ,win_client/x32/
+    string RelativePCDir;//->  dirname: libs , client, mds
+    string pwdFullPath;//rootDir + RelativePCDir + [FileName] 
     
     FiGetCurDir(sizeof(buff),buff);
     rootpath = buff;
     rootDir  = dirname(buff);
+    rootDir += "/";
+    pkgDir   = rootDir;
+    pkgDir  += "update/";
     ut_dbg("FiUpdateAssistant:: root path %s \n",rootpath.c_str());
     fflush(stdout);
     //std::string::size_type index =rootpath.rfind("/");
@@ -1375,7 +1380,8 @@ int FiUpdateAssistant::svc()
 #endif
     strcmd ="cd ";
     strcmd += dirfilename.c_str();
-    pkgDir = dirfilename;
+    pkgDir += dirfilename;
+    pkgDir += "/";//mark need to modify
     FiExecuteShell(strcmd.c_str()); //enter pack dir
 
 #ifdef WIN32
@@ -1508,11 +1514,12 @@ int FiUpdateAssistant::svc()
     {
         File_Layout_t& layout = *it;
         char location[200]={0};
-        string strTmp = layout.strName;
+        char strTmpBuf[256] = {0};
+        strcpy(strTmpBuf, layout.strName.c_str());
         strcpy(location, installpath.c_str());// %root -> /sobey/fics
         std::string &fileloc = layout.strLocation;//libs/*  
-        RelativeDstDir = dirname(strTmp.c_str());
-        RelativeDstDir += "/";
+        RelativePkgDir = dirname(strTmpBuf);
+        RelativePkgDir += "/";
         pwdFullPath = rootDir;  
         int len = fileloc.length();
 #ifdef WIN32
@@ -1544,12 +1551,17 @@ int FiUpdateAssistant::svc()
             {
                 strcat(location,&fileloc[strlen("%root")+1]);///sobey/fics/update/test_FiUpdateMgr
                 char relativeBuf[128]={0};
-                strcpy(relativeBuf, &fileloc[strlen("%root")]);
+                strcpy(relativeBuf, &fileloc[strlen("%root")+1]);
+                RelativePCDir = relativeBuf;
                 pwdFullPath  += relativeBuf;
             }
         }
-        strTemp      = layout.strName;
-        pwdFullPath += basename(strTemp.c_str());//dir:lib/*, *.sys, FiUpdateMgr
+        strcpy(strTmpBuf, layout.strName.c_str());
+//        strTemp      = layout.strName;
+        if (strTmpBuf[strlen(strTmpBuf)-1] != '*')
+        {
+            pwdFullPath += basename(strTmpBuf);//dir:lib/*, *.sys, FiUpdateMgr
+        }
         std::string cfullname = pkgDir;//server_v1.0.0_date_patchNo
         char* p = strstr((char*)layout.strName.c_str(),"/*");//dir
         bool isdir=false;
@@ -1622,14 +1634,15 @@ int FiUpdateAssistant::svc()
             sprintf(cmd,"install -p -v -D -S .back %s/%s %s \n",
                     pkgDir.c_str(), layout.strName.c_str(), pwdFullPath.c_str());//pwdFullPath == *?
             FiWriteFile(fpinstall, cmd, strlen(cmd));
-            //back up
-            sprintf(backcmd, "mv  %s.back %sbackup/%s\n",
-                    pwdFullPath.c_str(), pkgDir.c_str(), RelativeDstDir.c_str());
+            //back up   attention : %s*.back
+            sprintf(backcmd, "mkdir -p %sbackup/%s; for f in `ls %s*.back`; do fname=`basename $f`; newf=${fname%%.*}; mv $f %sbackup/%s/${newf}; done;\n",
+                    pkgDir.c_str(), RelativePkgDir.c_str(), pwdFullPath.c_str(),
+                    pkgDir.c_str(), RelativePkgDir.c_str());
             FiWriteFile(fpinstall, backcmd, strlen(backcmd));
             //recover
             sprintf(uncmd, "install -p -v -D %s/backup/%s %s\n",
                     pkgDir.c_str(), layout.strName.c_str(), pwdFullPath.c_str());
-            FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
+            FiWriteFile(fpuninstall, uncmd, strlen(uncmd));
 //            sprintf(uncmd,"cp %s  %sbackup/%s %s\n",(isdir)?"-rf ":" -f ",downfilefullname.c_str(),layout.strName.c_str(),location);
 //            FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
 #endif
@@ -1665,7 +1678,7 @@ int FiUpdateAssistant::svc()
             cfullname +=layout.strName.c_str();
             //back up
             sprintf(backcmd,"cp -a -rf %s %sbackup/%s\n",
-                    pwdFullPath, pkgDir.c_str(), RelativeDstDir.c_str());
+                    pwdFullPath.c_str(), pkgDir.c_str(), RelativePkgDir.c_str());
             //rm -rf
             sprintf(cmd,"rm %s -rf \n",
                     pwdFullPath.c_str());
@@ -1699,12 +1712,20 @@ int FiUpdateAssistant::svc()
             sprintf(uncmd,"%s %s%s\r\n",(isdir)?"rd /S /Q":"del /S /Q ",location,layout.strName.c_str());
 #else
             // sprintf(backcmd,"mv %s backup/\n",location);
-            sprintf(cmd,"mkdir -p %s\n", location);
+            sprintf(cmd,"mkdir -p %s\n", RelativePCDir.c_str());
             //install
             sprintf(cmd+strlen(cmd),"install -p -v  %s/%s %s\n",
                     pkgDir.c_str(), layout.strName.c_str(), pwdFullPath.c_str());
             //recover
-            sprintf(uncmd, "rm -rf %s\n", pwdFullPath.c_str());
+            if (isdir)//dir
+            {
+                sprintf(uncmd, "fileList=`ls %s%s`;", pkgDir.c_str(), RelativePkgDir.c_str());
+                sprintf(uncmd+strlen(uncmd), "cd %s/%s && rm -rf ${fileList} && cd -\n", rootDir.c_str(), RelativePCDir.c_str());
+            }
+            else
+            {
+                sprintf(uncmd, "rm -rf %s\n", pwdFullPath.c_str());
+            }
 #endif
             FilePair FP;
             FP.file1 = downfilefullname+layout.strName.c_str();
@@ -1839,8 +1860,8 @@ int FiUpdateAssistant::svc()
     sprintf(backcmd,"del /s/q %s%s\r\n",installpath.c_str(),"patch_version");
     sprintf(uncmd,"copy /Y %sbackup\\%s %s \r\n",downfilefullname.c_str(),"patch_version",installpath.c_str());
 #else
-    sprintf(cmd,"cp -f %s%s %sbackup/ \n",installpath.c_str(),"patch_version",downfilefullname.c_str());
-    sprintf(backcmd,"rm -rf %s%s\n",installpath.c_str(),"patch_version");
+    sprintf(cmd,"cp -f %s%s %sbackup/ \n",installpath.c_str(),"patch_version",downfilefullname.c_str());//back patch_version
+    sprintf(backcmd,"rm -rf %s%s\n",installpath.c_str(),"patch_version");//recover patch_version
     sprintf(uncmd,"cp -f %sbackup/%s %s \n",downfilefullname.c_str(),"patch_version",installpath.c_str());
 #endif
     FiWriteFile(fpinstall,cmd,strlen(cmd));
@@ -1946,7 +1967,7 @@ int FiUpdateAssistant::svc()
     getVerFromName(this->filename.c_str(), &curVer);
     addVer2His(&curVer, HISTORY);
     writeLocalVer(&curVer);
-    chdir(installpath.c_str());//set current dir
+    chdir(rootDir.c_str());//set dir /sobey/fics
     
     char clean[200];
 #ifdef WIN32
@@ -1998,12 +2019,12 @@ int FiUpdateAssistant::svc()
 //            FiWriteFile(fpuninstall,(void*)(startupself.c_str()),startupself.length());
             //std::string startupself;
 //            startupself = "nohup "+installpath +"client/fiwatchdog & \n";            
-            startupself = installpath +"client/fiwatchdog & \n";            
+            startupself = rootDir +"client/fiwatchdog & \n";            
         }
         else
         {
             //linux
-            startupself =installpath+"client/fiwatchdog &";
+            startupself = rootDir + "client/fiwatchdog & \n";
             //win
         }
 
@@ -2355,7 +2376,7 @@ int FiUpdateAssistant::UpdateVersionFile()
 /**
  * @brief 比较服务器的Patchs和本地的包进行对比，并将缺少的包标记到 lossPatchs中
  *
- * @param serPatchs
+ * @param serPatchs: 
  * @param lossPatchs
  *
  * @return 本地库和远程库一样则返回0，否则返回缺少包的个数
@@ -2372,10 +2393,12 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
     vector <string> pathDirList;
     vector <string>::iterator itr;
     char tmpPath[256]={0};
+    char tmpPathDir[256]={0};
     string version = netVer->version;
     string remoteMD5;
     string localMd5;
     int patchNo = 0;
+    char *suffix = NULL;
     
     int basePatch = getCurBaseVer(atoi(netVer->patchNo));
     std::vector<std::string> optinalname;
@@ -2397,9 +2420,15 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
             // i ==> patchNum
             sprintf(tmpPath, "%s_%s_*_%d%s", prixMatrix[which], version.c_str(), patchNo+i, optinalname[0].c_str());//正则 need to modify not fics_... client_... "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"; "server_v1.0.0_*_4001_32_Linux2.6.tar.gz
             //first : match dir
+            strcpy(tmpPathDir, tmpPath);
+            suffix = strstr(tmpPathDir, ".tar.gz");
+            if (suffix)
+            {
+                *suffix = '\0'; 
+            }
             for (itr = pathDirList.begin(); itr!= pathDirList.end(); itr++)
             {
-                if (matchRE(itr->c_str(), tmpPath))
+                if (matchRE(itr->c_str(), tmpPathDir))
                 {
                     exist = true;
                     break;
