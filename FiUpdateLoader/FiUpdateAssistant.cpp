@@ -555,12 +555,15 @@ static bool comp(string a, string b)
     return a<b;
 }
 /**
- * @brief 安装大于当前版本的所有patch
+ * @brief 安装大于当前版本的所有patch,
+ * 1. 所有的tar.gz都该安装。
+ * 2. 同版本的 tar和目录并存时，优先安装目录中的文件
  *
  * @param version
  * @param lossPatchs
- *
+ *      
  * @return 已完成更新包的个数
+ * @sa     pkg已全部下载到当前目录下,若未下载则仅仅更新版本号文件patch_version 注意ver 内容为空的情况
  */
 int FiUpdateAssistant::installAllPatch(version_t *ver)
 {
@@ -572,7 +575,7 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
      *-----------------------------------------------------------------------------*/
     string fileName;
     vector<string> pkgList;
-    char *suffix        = ".tar.gz";
+    char *suffix        = "";//".tar.gz";
     const char *prefix  = prixMatrix[which];
     char *verTest       = netVer.version;//"v1.0.0"; 不能为空""
     int i               = 0;
@@ -582,7 +585,20 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     int localPatchNo = atoi(ver->patchNo);
     int size         = 0;
     int ipatchNo     = 0;
+    version_t curVer;
+#ifndef WIN32
+    string rootDir   = "/sobey/fics/update/";
+#else
+    string rootDir   = "C:\\Sobey\\Fics\\update\\";
+#endif
+
+    chdir(rootDir.c_str());
     //scan all tar.gz
+    if (*verTest == '\0')
+    {
+        ut_err("version is null!!!!!\n");
+        return 0;
+    }
     if (getPkgList(path, prefix, suffix, verTest, pkgList) < 0)
     {
         ut_err("get pkg list fail\n");
@@ -629,15 +645,50 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
             ret = -1;
             ut_err("install patch [%s] fail\n", pkgList[i].c_str());
         }
+        else//append to history
+        {
+            memset(&curVer, 0, sizeof(version_t));
+            getVerFromName(this->filename.c_str(), &curVer);
+            addVer2His(&curVer, HISTORY);
+            writeLocalVer(&curVer);
+        }
     }
 
     if (ret == 0)
     {
-        UpdateVersionFile();
+        pkgList.clear();
+        if (getPkgList(path, prefix, ".tar.gz", verTest, pkgList) < 0)
+        {
+            ut_err("get pkg list fail\n");
+        }        
+        if (!pkgList.empty())
+        {
+            sort(pkgList.begin(), pkgList.end(), comp);
+            size = pkgList.size();
+            for (i=0; i<size; i++)
+            {
+                if (installOldPkg(pkgList[i].c_str()) < 0)
+                {
+                    ut_err("install old pkg %s fail!!!!\n", pkgList[i].c_str());
+                }
+            }
+        }
+        UpdateVersionFile();//多余的
         installOver = true;
         ret = curCountInstalled;
     }
     return ret;
+}
+int FiUpdateAssistant::installOldPkg(const char *fileName)
+{
+    (void) fileName;
+    /*-----------------------------------------------------------------------------
+     *  安装过程中，对应新补丁中的每个文件均会扫描该文件是否已经在之前进行了升级，只有未升级的文件才会进行升级并备份，对于已经升级过的文件也会进行备份，备份的文件来源为高版本中已经升级文件的备份目录
+     *  1. 安装(升级):检查高版本所有文件中是否有该文件存在，存在则跳过不进行安装  检查 A:M 暂时不检查D版本
+     *  2. 备份:已经升级过，则从高版本中的备份目录中copy
+     *          没有升级过，则直接备份
+     *-----------------------------------------------------------------------------*/
+    return 0;
 }
 /**
  * @brief 安装单个补丁包，只有版本信息，补丁号 没有时间
@@ -652,6 +703,12 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
     int  ret = 0;
     char *suffix =".tar.gz";
     char *end = NULL;
+#ifndef WIN32
+    const char rootDir = "/sobey/fics/update/";
+#else
+    const char rootDir = "c:\\Sobey\\Fics\\update\\";
+#endif
+    char curPwd[256] = {0};
     
     /*-----------------------------------------------------------------------------
      *  1. uncompress tar.gz
@@ -659,12 +716,14 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
      *-----------------------------------------------------------------------------*/
     string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz";
     this->filename = fileName;
+    chdir(rootDir);
 #ifndef WIN32
     struct stat st;
     char cmdBuf[512] = {0};
     if (stat(fileName, &st) == -1)
     {
-        ut_err("stat error num:%d\n", errno);
+        getcwd(curPwd, sizeof(curPwd));
+        ut_err("cur path %s stat error num:%d\n", curPwd, errno);
     }
     else
     {
@@ -1313,6 +1372,11 @@ bool FiUpdateAssistant::checkfolder(const char* folder1_full,const char* folder2
     return true;
 }
 static char* pause5="ping -n 5 localhost > nul \r\n";
+int FiUpdateAssistant::setPlatform(long which)
+{
+    this->which = which;
+    return 0;
+}
 int FiUpdateAssistant::setFile(std::string name)
 {
     char* p = strstr((char*)name.c_str(), ".tar.gz");
@@ -1697,8 +1761,9 @@ int FiUpdateAssistant::svc()
             cfullname += "backup/";
             cfullname +=layout.strName.c_str();
             //back up
-            sprintf(backcmd,"cp -a -rf %s %sbackup/%s\n",
-                    pwdFullPath.c_str(), pkgDir.c_str(), RelativePkgDir.c_str());
+            sprintf(backcmd,"mkdir -p %sbackup/%s; cp -a -rf %s %sbackup/%s\n",
+                    pkgDir.c_str(), RelativePkgDir.c_str(), pwdFullPath.c_str(),
+                    pkgDir.c_str(), RelativePkgDir.c_str());
             //rm -rf
             sprintf(cmd,"rm %s -rf \n",
                     pwdFullPath.c_str());
@@ -1982,11 +2047,7 @@ int FiUpdateAssistant::svc()
     }
 
 //    UpdateVersionFile();
-    version_t curVer;
-    memset(&curVer, 0, sizeof(version_t));
-    getVerFromName(this->filename.c_str(), &curVer);
-    addVer2His(&curVer, HISTORY);
-    writeLocalVer(&curVer);
+
     chdir(rootDir.c_str());//set dir /sobey/fics
     
     char clean[200];
@@ -1996,7 +2057,7 @@ int FiUpdateAssistant::svc()
     sprintf(clean,"rm -rf %s%s\n",rootpath.c_str(),filename.c_str());
 #endif
     FiExecuteShell(clean);
-    ut_dbg("update finish!\n");
+    ut_dbg("update %s finish!\n", filename.c_str());
     fflush(stdout);
 
     if(pack.bReboot)
@@ -2035,16 +2096,19 @@ int FiUpdateAssistant::svc()
 }
 bool FiUpdateAssistant::restartAPP(const char *app)
 {
-    void(app);
+    (void)app;
     const char *elf = NULL;
     string startupself;
+    string rootDir;
 #ifdef WIN32
+    rootDir = "c:\\Sobey\\Fics\\";
     startupself = rootDir + "FiWatchDog.exe \r\n";
 #else
-    startupself = rootDir +"apache-tomcat-7.0.28/bin/startup.sh ;"
-        startupself += rootDir + "client/fiwatchdog &\n";//"nohup"
+    rootDir = "/sobey/fics/";//need to modify
+    startupself = rootDir +"apache-tomcat-7.0.28/bin/startup.sh; ";
+    startupself += rootDir + "client/fiwatchdog &\n";//"nohup"
 #endif
-
+    elf = startupself.c_str();
     ut_dbg("restart %s \n", elf);
     fflush(stdout);
     //undo 1>log
@@ -2127,25 +2191,12 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
     char *date    = dstVer->date;
     char *patchno = dstVer->patchNo;
     int ret = 0;
+    version_t curVer;
 
     std::string prix;
     prix = prixMatrix[which];
     newerver = version;
     newerdate = date;
-    switch (which)
-    {
-        case SERVER:
-            prix = "server";
-            break;
-        case CLIENT:
-            prix = "client";
-            break;
-        case MAS_SRV:
-            prix = "Massvr";
-            break;
-        default:
-            break;
-    }
 
     filename = prix+"_"+newerver+"_"+newerdate;
     if (patchno!=NULL&&strlen(patchno)>0)
@@ -2274,7 +2325,23 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
 #endif
         //fullname += " > rollback_"+allfolders[j]+".log";
         FiExecuteShell(fullname.c_str());
+        //update history
+        memset(&curVer, 0, sizeof(version_t));
+        getVerFromName(allfolders[j].c_str(), &curVer);
+        addVer2His(&curVer, HISTORY);
+//        writeLocalVer(&curVer);        
         //FiExecuteShell("cd ../");
+    }
+    if (installSinglePatch(allfolders[j].c_str()) < 0)
+    {
+        ut_err("RollBack install patch [%s] fail\n", allfolders[j].c_str());
+    }
+    else
+    {
+        memset(&curVer, 0, sizeof(version_t));
+        getVerFromName(allfolders[j].c_str(), &curVer);
+        addVer2His(&curVer, HISTORY);
+        writeLocalVer(&curVer);
     }
 
     //     FILE* fp = fopen("versionctl.txt","wb+");
@@ -2354,11 +2421,11 @@ int FiUpdateAssistant::UpdateVersionFile()
     std::string name("file_name:");
     name+= "fics_";
     name+=newerver+"_"+newerdate;
-    if(newerpatchno>0)
-    {
-        name+="_patch";
-        name+=tmp;
-    }
+//    if(newerpatchno>0)
+//    {
+//        name+="_patch";
+//        name+=tmp;
+//    }
     
     fputs(name.c_str(),curverfp);
 #ifndef WIN32

@@ -70,6 +70,7 @@ int genHashValueFromDir(vector<string> & verList, string & hashValue);//not use
 int genHashFromHis(const char *path, string & hashValue);
 /**
  * @brief 将当前上传的包名字 放入历史记录文件中，方便查看历史记录
+ * 1. 回退版本时里面记录全局统一的版本名还是上一次的版本名
  * fics_v1.0.0_date_patchNo
  *
  * @param newVer 版本名（不包含hash的版本名）

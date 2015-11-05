@@ -39,6 +39,7 @@
     limit.rlim_max = RLIM_INFINITY;\
     setrlimit(RLIMIT_CORE, &limit);\
 }
+#define updatePkg(ver)   updateLocal(ver)          /*  */
 /* The name of this program. */
 static FiRpcSrv<FiUpdateMgrImpl> *UpdateSrv = NULL;   
 static const char* program_name;
@@ -122,6 +123,7 @@ bool updateLocal(version_t *pver)
     char *p;
     char *ver = pver->version;
     char *date = pver->date;
+    char *patchNo = pver->patchNo;
     std::string name;
 
     if (!pver)
@@ -161,8 +163,8 @@ bool updateLocal(version_t *pver)
     char fullName[256];
     struct stat statBuf;
     strcpy(fullName, _PATH_PKG_DL);
-    sprintf(fullName+strlen(fullName), "fics_%s_%s",
-            pver->version, pver->date);
+    sprintf(fullName+strlen(fullName), "fics_%s_%s_%s",
+            pver->version, pver->date, pver->patchNo);
     if (-1 == lstat(fullName, &statBuf))
     {
         ut_err("does the pkg dir not exist?\n");
@@ -178,6 +180,8 @@ bool updateLocal(version_t *pver)
     name += ver;
     name += "_";
     name += date;
+    name += "_";
+    name += patchNo;
     name += optinalname[0];
     sprintf(fullName + strlen(fullName), "/%s", name.c_str());
     if (!FiIsExistFile(fullName))
@@ -191,9 +195,9 @@ bool updateLocal(version_t *pver)
     sprintf(cmdBuf, "cp %s " _PATH_PKG_DL "../update/", fullName);
     FiExecuteShell(cmdBuf);
     //begin to install
-    FiUpdateAssistant::getinstance()->setFile(name);
-    ret = FiUpdateAssistant::getinstance()->svc();
-    ut_dbg("install ret[%d]\n", ret);
+//    FiUpdateAssistant::getinstance()->setFile(name);
+//    ret = FiUpdateAssistant::getinstance()->svc();
+//    ut_dbg("install ret[%d]\n", ret);
     return true;
 err:
     return false;
@@ -207,6 +211,7 @@ void *selfUpdate(void *params)
     memset(&newVer, 0, sizeof(version_t));
     memset(&localVer, 0, sizeof(version_t));
     getLocalVersion(&localVer);
+    FiUpdateAssistant::getinstance()->setPlatform(MAS_SRV);
     /*-----------------------------------------------------------------------------
      *  watch patch_version if changed.
      *-----------------------------------------------------------------------------*/
@@ -222,26 +227,36 @@ void *selfUpdate(void *params)
         else if (ret < 0)
         {
             //update local
-            if (updateLocal(&newVer))
+            if (!updatePkg(&newVer))
             {
-                ut_dbg("update down\n");
+                ut_dbg("update pkg fail patchNo:%s !!!! no pkg invalid ?\n", newVer.patchNo);
+            }
+            memcpy((void *)&FiUpdateAssistant::getinstance()->netVer,
+                    (void *)&newVer, sizeof(version_t));
+            if (0 != FiUpdateAssistant::getinstance()->installAllPatch(&localVer))
+            {
+                FiUpdateAssistant::getinstance()->restartAPP("fics");
                 goto exit;
             }
-            
+            else
+            {
+                memcpy((void *)&localVer, (void *)&newVer, sizeof(version_t));
+                ut_dbg("update down\n");
+            }
         }
         else if (ret > 0 && ret != 1000000)
         {
             //rollback
-            if (updateLocal(&newVer))
-            {
-                ut_dbg("update down\n");
-                goto exit;
-            }
+            memcpy((void *)&FiUpdateAssistant::getinstance()->netVer,
+                    (void *)&newVer, sizeof(version_t));
+            FiUpdateAssistant::getinstance()->RollBack(&newVer);
+            FiUpdateAssistant::getinstance()->restartAPP("fics");
+            goto exit;
         }
     }
     return NULL;
 exit:
-     UpdateSrv->shutdown();
+    UpdateSrv->shutdown();
     exit(0);
     return NULL;
 }
