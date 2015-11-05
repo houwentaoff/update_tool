@@ -233,14 +233,17 @@ int main(int argc, char **argv)
              *  3. down pkg that I dont have
              *  4. update (patch_version, history, patch)
              *-----------------------------------------------------------------------------*/
-            checkAndDownPkg();//down over
+            syncPkg();//down over
 #if  0
             if (shouldInsBase(localBase, remoteBase) == true)
             {
                 FiUpdateAssistant::getinstance()->installAllPatch();
             }
 #endif
-            FiUpdateAssistant::getinstance()->installAllPatch(&localVer);
+            if (0 != FiUpdateAssistant::getinstance()->installAllPatch(&localVer))
+            {
+                FiUpdateAssistant::getinstance()->restartAPP("fics");
+            }
             //FiUpdateAssistant::getinstance()->update();
         }
         else if (ret > 0 && ret != 1000000)
@@ -253,11 +256,12 @@ int main(int argc, char **argv)
              *  3. down pkg that I dont have
              *  4. rollback
              *-----------------------------------------------------------------------------*/
-            checkAndDownPkg();
+            syncPkg();
 #if 0
             FiUpdateAssistant::getinstance()->update();
 #else             
             FiUpdateAssistant::getinstance()->RollBack(&netVer);
+            FiUpdateAssistant::getinstance()->restartAPP("fics");
 #endif
         }
         else

@@ -145,7 +145,7 @@ int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatch
  *
  * @return 
  */
-int checkAndDownPkg();
+int syncPkg();
 /**
  * @brief 将整数 20140510转化为 2014.05.10
  *

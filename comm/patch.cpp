@@ -318,7 +318,7 @@ int getPkgList(char const * path, char const * prefix, char const *suffix, const
     char *fileName = NULL;
     FILE *fp = NULL;
 
-    sprintf(cmdBuf, "find %s -name \'%s_%s_*.%s\'", path, prefix, version, suffix);
+    sprintf(cmdBuf, "find %s -name \'%s_%s_*%s\'", path, prefix, version, suffix);
     if (NULL == (fp = popen(cmdBuf, "r")))
     {
         ut_err("popen fail\n");
@@ -431,7 +431,7 @@ int long2Date(long ldate, string &sdate)
 
     return 0;
 }
-int checkAndDownPkg()
+int syncPkg()
 {
     /*-----------------------------------------------------------------------------
      *  1. ask which pkg should be downed.

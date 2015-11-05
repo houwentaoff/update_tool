@@ -89,6 +89,7 @@ public:
     int queryPatchs(patchSet_t patchs);
     int comparePatchs(version_t *netVer, patchSet_t serPatchs, patchSet_t  lossPatchs);
     int getMD5FromRemote(const char *fileName, std::string &remoteMD5);
+    bool restartAPP(const char *elf);
 
 private:
     FiRpcCli<FiUpdateMgr> *cli;

@@ -560,27 +560,28 @@ static bool comp(string a, string b)
  * @param version
  * @param lossPatchs
  *
- * @return 
+ * @return 已完成更新包的个数
  */
 int FiUpdateAssistant::installAllPatch(version_t *ver)
 {
 
     /*-----------------------------------------------------------------------------
-     *  1. scan all tar.gz
+     *  1. scan all tar.gz/dir
      *  2. sort 
-     *  3. install tar.gz
+     *  3. install tar.gz/dir
      *-----------------------------------------------------------------------------*/
     string fileName;
     vector<string> pkgList;
-    char *suffix     = "tar.gz";
-    const char *prefix     = "server";
-    char *verTest    = netVer.version;//"v1.0.0"; 不能为空""
-    int i            = 0;
-    int ret          = 0;
-    string patchNo;
-    char *path       = "./";
+    char *suffix        = ".tar.gz";
+    const char *prefix  = prixMatrix[which];
+    char *verTest       = netVer.version;//"v1.0.0"; 不能为空""
+    int i               = 0;
+    int ret             = 0;
+    char *path          = "./";
     string pkgName   = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz";
     int localPatchNo = atoi(ver->patchNo);
+    int size         = 0;
+    int ipatchNo     = 0;
     //scan all tar.gz
     if (getPkgList(path, prefix, suffix, verTest, pkgList) < 0)
     {
@@ -588,22 +589,41 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     }
     if (!pkgList.empty())
     {
+        //从小到大  删除不合法的 //need to modify
         sort(pkgList.begin(), pkgList.end(), comp);
+        //list : if dir * exist, esare *.tar.gz 
+        size = pkgList.size();
+        for (i=size-1; i>0; i--)
+        {
+            if(strstr(pkgList[i].c_str(), pkgList[i-1].c_str()))
+            {
+                //del pkgList[i];
+                pkgList.erase(pkgList.begin()+i);
+            }
+        }
     }
     else
     {
         ut_err("there is no pkg?\n");
     }
-    //pkgList.sort();//从小到大  删除不合法的 //need to modify
-    int size = pkgList.size();
-    totalPkg = size;
-    int ipatchNo = 0;
+    size = pkgList.size();
+    totalPkg = 0;
+    for (i=0; i<size; i++)
+    {
+        ipatchNo = getPatchNumFromName(pkgList[i].c_str());
+        if (localPatchNo < ipatchNo)//取版本号比当前大的然后安装, 小的跳过
+        {
+            totalPkg = size - i;//大于当前版本的包有多少个
+            break;
+        }
+    }
+    curCountInstalled = 0;
     for (i = 0; i<size; i++)
     {
-        curCountInstalled = i+1;
         ipatchNo = getPatchNumFromName(pkgList[i].c_str());
         if (localPatchNo >= ipatchNo)//取版本号比当前大的然后安装, 小的跳过
             continue;
+        curCountInstalled ++;
         if (installSinglePatch(pkgList[i].c_str()) < 0)
         {
             ret = -1;
@@ -615,6 +635,7 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     {
         UpdateVersionFile();
         installOver = true;
+        ret = curCountInstalled;
     }
     return ret;
 }
@@ -1303,7 +1324,6 @@ int FiUpdateAssistant::setFile(std::string name)
 }
 int FiUpdateAssistant::svc()
 {
-
     std::vector<FilePair> vecChangedFiles;
     char buff[200];
     std::string rootpath;
@@ -1995,90 +2015,73 @@ int FiUpdateAssistant::svc()
     }
     else
     {
-        std::string startupself;
-#ifdef WIN32
-        
-        if(which != CLIENT)//mds
-        {
-            startupself = installpath +"difscmdmgr\\DifsMgr.exe +S \r\n";
-        }
-        else
-        {
-            startupself = installpath +"FiWatchDog.exe  \r\n";
-        }
-        //FiWriteFile(fpinstall,(void*)(startupself.c_str()),killself.length());
-        //FiWriteFile(fpuninstall,(void*)(startupself.c_str()),killself.length());
-#else
-        if(which != CLIENT )
-        {
-            startupself = installpath+"apache-tomcat-7.0.28/bin/startup.sh \n";
-            if (curCountInstalled == totalPkg)
-            {
-                FiExecuteShell(startupself.c_str());//need to modify
-            }
-//            FiWriteFile(fpuninstall,(void*)(startupself.c_str()),startupself.length());
-            //std::string startupself;
-//            startupself = "nohup "+installpath +"client/fiwatchdog & \n";            
-            startupself = rootDir +"client/fiwatchdog & \n";            
-        }
-        else
-        {
-            //linux
-            startupself = rootDir + "client/fiwatchdog & \n";
-            //win
-        }
-
-#endif
-       if(startupself.length()>0 && totalPkg == curCountInstalled)
+#if 0
+       if(totalPkg == curCountInstalled)
        {
-
            std::string curdir = "cd ";
            curdir += installpath +" \r \n";
            FiWriteFile(fpuninstall,(void*)(curdir.c_str()),curdir.length());
             //FiWriteFile(fpinstall,(void*)(startupself.c_str()),startupself.length());
-           FiWriteFile(fpuninstall,(void*)(startupself.c_str()),startupself.length());
+//           FiWriteFile(fpuninstall,(void*)(startupself.c_str()),startupself.length());
            FiCloseFile(fpuninstall);
            FiExecuteShell(curdir.c_str());//need to modify
-           //undo 1>log
-           //do log>1
-#ifdef WIN32
-#else
-           int devstdoutfd = 0;
-           int devstderrfd = 0;
-           if (-1 == (devstdoutfd = open("/dev/stdout", 0)))
-           {
-               ut_err("open stdout fail\n");
-           }
-           if (-1 == (devstderrfd = open("/dev/stderr", 0)))
-           {
-               ut_err("open stderr fail\n");
-           }           
-           fflush(stdout);
-           if (-1 == dup2(devstdoutfd, STDOUT_FILENO))
-           {
-               ut_err("dup2 error\n");
-           }
-           if (-1 == dup2(devstderrfd, STDERR_FILENO))
-           {
-               ut_err("dup2 error\n");
-           }
-#endif
-           ut_dbg("clear stdout \n");
-           fflush(stdout);
-           FiExecuteShell(startupself.c_str());//need to modify
-#ifdef WIN32
-#else
-           char *path = "/sobey/fics/update/FiUpdateLoader.log";
-           freopen(path,"a+",stdout);
-           freopen(path,"a+",stderr);
-           ut_dbg("fiwatchdog &\n");
-           fflush(stdout);
-#endif
+//           restartAPP("fics");
        }
+#endif
     }
     
     NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
     return 1;
+}
+bool FiUpdateAssistant::restartAPP(const char *app)
+{
+    void(app);
+    const char *elf = NULL;
+    string startupself;
+#ifdef WIN32
+    startupself = rootDir + "FiWatchDog.exe \r\n";
+#else
+    startupself = rootDir +"apache-tomcat-7.0.28/bin/startup.sh ;"
+        startupself += rootDir + "client/fiwatchdog &\n";//"nohup"
+#endif
+
+    ut_dbg("restart %s \n", elf);
+    fflush(stdout);
+    //undo 1>log
+    //do log>1
+#ifdef WIN32
+#else
+    int devstdoutfd = 0;
+    int devstderrfd = 0;
+    if (-1 == (devstdoutfd = open("/dev/stdout", 0)))
+    {
+        ut_err("open stdout fail\n");
+    }
+    if (-1 == (devstderrfd = open("/dev/stderr", 0)))
+    {
+        ut_err("open stderr fail\n");
+    }           
+    fflush(stdout);
+    if (-1 == dup2(devstdoutfd, STDOUT_FILENO))
+    {
+        ut_err("dup2 error\n");
+    }
+    if (-1 == dup2(devstderrfd, STDERR_FILENO))
+    {
+        ut_err("dup2 error\n");
+    }
+#endif
+    FiExecuteShell(elf);//need to modify
+#ifdef WIN32
+#else
+    char *path = "/sobey/fics/update/FiUpdateLoader.log";
+    freopen(path,"a+",stdout);
+    freopen(path,"a+",stderr);
+    ut_dbg("fiwatchdog &\n");
+    fflush(stdout);
+#endif
+
+    return true;
 }
 //server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"
 bool less_second(const std::string & m1, const std::string & m2) 
@@ -2185,16 +2188,9 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
 
 #ifdef WIN32
     std::string killself;
-    if(which != CLIENT)//server
-    {
-        killself = installpath +"difscmdmgr\\DifsMgr.exe -S __Child_Process__ \r\n";
-    }
-    else
-    {
-        killself = installpath +"difscmdmgr\\DifsMgr.exe -C __Child_Process__ \r\n";
-    }
-    FiExecuteShell(killself.c_str());
-    FiExecuteShell("taskkill /f /t /im DifsMgr.exe");
+    system("taskkill /f /im Fiwatchdog.exe ");
+    system("taskkill /f /t /im scm.exe ");
+    system("taskkill /f /t /im fitool.exe ");
 #else
     if(which != CLIENT)
     {
@@ -2225,7 +2221,7 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
     for(;iter!=allfolders.end();++iter)
     {
         std::string& str=*iter;
-        if(str.find("_v")==std::string::npos)//清除 非安装包目录  _v
+        if(str.find("_v")==std::string::npos)//清除 非安装包目录  _v 作为标记
         {
             allfolders.erase(iter);
             iter =allfolders.begin();
@@ -2406,7 +2402,7 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
 
     getDirList("./", pathDirList);//get dir list
 
-    if (getPkgList("./", prefix, "tar.gz", version.c_str(), pkgList) < 0)
+    if (getPkgList("./", prefix, ".tar.gz", version.c_str(), pkgList) < 0)
     {
         ut_err("get pkg list fail\n");
     }
