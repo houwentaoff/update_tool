@@ -142,7 +142,7 @@ _objref_FiUpdateMgr::_ptrToObjRef(const char* id)
 }
 
 // Proxy call descriptor class. Mangled signature:
-//  _clong_i_cstring_i_cstring_i_cstring_o_cstring_o_cstring_o_cstring
+//  _clong_i_cstring_i_cstring_i_cstring_o_cstring_o_cstring_o_cstring_o_cstring
 class _0RL_cd_1a070d6de3072870_00000000
   : public omniCallDescriptor
 {
@@ -171,6 +171,7 @@ public:
   ::CORBA::String_var arg_3;
   ::CORBA::String_var arg_4;
   ::CORBA::String_var arg_5;
+  ::CORBA::String_var arg_6;
   ::CORBA::Long result;
 };
 
@@ -199,6 +200,7 @@ void _0RL_cd_1a070d6de3072870_00000000::marshalReturnedValues(cdrStream& _n)
   _n.marshalString(arg_3,0);
   _n.marshalString(arg_4,0);
   _n.marshalString(arg_5,0);
+  _n.marshalString(arg_6,0);
 
 }
 
@@ -208,6 +210,7 @@ void _0RL_cd_1a070d6de3072870_00000000::unmarshalReturnedValues(cdrStream& _n)
   arg_3 = _n.unmarshalString(0);
   arg_4 = _n.unmarshalString(0);
   arg_5 = _n.unmarshalString(0);
+  arg_6 = _n.unmarshalString(0);
 
 }
 
@@ -221,12 +224,12 @@ _0RL_lcfn_1a070d6de3072870_10000000(omniCallDescriptor* cd, omniServant* svnt)
 {
   _0RL_cd_1a070d6de3072870_00000000* tcd = (_0RL_cd_1a070d6de3072870_00000000*)cd;
   _impl_FiUpdateMgr* impl = (_impl_FiUpdateMgr*) svnt->_ptrToInterface(FiUpdateMgr::_PD_repoId);
-  tcd->result = impl->QueryCurVersion(tcd->arg_0, tcd->arg_1, tcd->arg_2, tcd->arg_3.out(), tcd->arg_4.out(), tcd->arg_5.out());
+  tcd->result = impl->QueryCurVersion(tcd->arg_0, tcd->arg_1, tcd->arg_2, tcd->arg_3.out(), tcd->arg_4.out(), tcd->arg_5.out(), tcd->arg_6.out());
 
 
 }
 
-::CORBA::Long _objref_FiUpdateMgr::QueryCurVersion(const char* inversion, const char* indate, const char* inpatchno, ::CORBA::String_out version, ::CORBA::String_out date, ::CORBA::String_out patchno)
+::CORBA::Long _objref_FiUpdateMgr::QueryCurVersion(const char* inversion, const char* indate, const char* inpatchno, ::CORBA::String_out version, ::CORBA::String_out date, ::CORBA::String_out patchno, ::CORBA::String_out hash)
 {
   _0RL_cd_1a070d6de3072870_00000000 _call_desc(_0RL_lcfn_1a070d6de3072870_10000000, "QueryCurVersion", 16);
   _call_desc.arg_0 = inversion;
@@ -237,6 +240,7 @@ _0RL_lcfn_1a070d6de3072870_10000000(omniCallDescriptor* cd, omniServant* svnt)
   version = _call_desc.arg_3._retn();
   date = _call_desc.arg_4._retn();
   patchno = _call_desc.arg_5._retn();
+  hash = _call_desc.arg_6._retn();
   return _call_desc.result;
 
 

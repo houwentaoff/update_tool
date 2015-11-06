@@ -18,7 +18,7 @@ public:
         EMAC
     }os_e;
 public:
-    int update();
+    //int update();
     int setFile(std::string name);
     int downloadFile(const char *ip, const char *srcName, const char *dstName);
     virtual int svc();
@@ -70,8 +70,8 @@ public:
 		evnt->signal();
 		return 0;
 	}
-	int UpdateVersionFile();
-    int handl_input(const char* filename);
+	//int UpdateVersionFile();
+    //int handl_input(const char* filename);
     int RollBack(version_t *dstVer);
 	bool CheckReg(std::vector<Reg_Layout_t>& regs);
 public:

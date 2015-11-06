@@ -15,7 +15,7 @@ public:
 	virtual ~FiUpdateMgrImpl();
 public:
 	virtual ::CORBA::Long QueryCurVersion(const char* inversion, const char* indate, const char* inpatchno,
-		::CORBA::String_out version, ::CORBA::String_out date, ::CORBA::String_out patchno);
+		::CORBA::String_out version, ::CORBA::String_out date, ::CORBA::String_out patchno, ::CORBA::String_out hash);
 	virtual ::CORBA::Long StartupUpdate(const ::PlatformInfoEx& PInfo, ::CORBA::Long which, 
 		const char* version, const char* date, const char* patchno, ::CORBA::String_out filename,
 		::CORBA::Long& size, ::CORBA::LongLong& ref) ;

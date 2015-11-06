@@ -8,24 +8,14 @@
 #include <io.h>
 #else
 #include <stdarg.h>
-#include <sys/stat.h>
 #include <sys/utsname.h>
 #include <libgen.h>
-#endif
-
-#ifdef _WIN32
-#define ACCESS _access
-#define MKDIR(a) _mkdir((a))
-#else
-#define ACCESS access
-#define MKDIR(a) mkdir((a),0755)
-#endif
-#include<stdio.h>
-#include<stdlib.h>
-#ifndef WIN32
 #include<unistd.h>
 #include <errno.h>
 #endif
+#include <sys/stat.h>
+#include<stdio.h>
+#include<stdlib.h>
 #include<string>
 #include <assert.h>
 #include<vector>
@@ -259,7 +249,7 @@ int FiUpdateAssistant::startup()
 
     xmlParser.load(strNetConfig.c_str());
 #ifdef WIN32
-    strWebDir +="../web/";
+    strWebDir +="..\\web\\";
 #else
     strWebDir +="../web";
 #endif
@@ -312,7 +302,7 @@ bool FiUpdateAssistant::ConnectUpMgr()
     FiGetCurDir(sizeof(buf),buf);
     std::string strNetConfig =buf;
 #ifdef WIN32
-    strNetConfig +="../Config/network.xml";//sean
+    strNetConfig +="..\\Config\\network.xml";//sean
 #else
     if(which==CLIENT)
     {
@@ -427,7 +417,7 @@ int FiUpdateAssistant::downLossPkg(version_t *netVer, long ldate, int patchNo)
         ut_dbg("no package available line:%d\n",__LINE__);
         fflush(stdout);
 //        NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
-//        UpdateVersionFile();
+//        writeLocalVer(&netVer);
         return 0;
     }
 
@@ -677,7 +667,7 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
 
             }
         }
-        UpdateVersionFile();//多余的
+        writeLocalVer(&netVer);//多余的
         installOver = true;
         ret = curCountInstalled;
     }
@@ -708,9 +698,9 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
     char *suffix =".tar.gz";
     char *end = NULL;
 #ifndef WIN32
-    const char rootDir = "/sobey/fics/update/";
+    const char *rootDir = "/sobey/fics/update/";
 #else
-    const char rootDir = "c:\\Sobey\\Fics\\update\\";
+    const char *rootDir = "c:\\Sobey\\Fics\\update\\";
 #endif
     char curPwd[256] = {0};
     
@@ -721,7 +711,7 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
     string pkgName = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz";
     this->filename = fileName;
     chdir(rootDir);
-#ifndef WIN32
+
     struct stat st;
     char cmdBuf[512] = {0};
     if (stat(fileName, &st) == -1)
@@ -734,12 +724,16 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
         if (S_ISDIR(st.st_mode))
         {
 //            chdir("/sobey/fics/update");
+#ifdef WIN32
+            sprintf(cmdBuf, ".\\%s\\install.sh", fileName);
+#else
             sprintf(cmdBuf, "./%s/install.sh", fileName);
+#endif
             system(cmdBuf);
             return 0;
         }
     }
-#endif
+
     end = strstr((char*)fileName, suffix);
     if (!end)
     {
@@ -781,6 +775,7 @@ int FiUpdateAssistant::getMD5FromRemote(const char *fileName, string &remoteMD5)
     }    
     return 0;
 }
+#if 0  //legacy
 int FiUpdateAssistant::update()
 {
     char* filename;
@@ -818,7 +813,7 @@ int FiUpdateAssistant::update()
         ut_dbg("no package available line:%d\n",__LINE__);
         fflush(stdout);
         NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
-        UpdateVersionFile();
+        writeLocalVer(&netVer);
         return 0;
     }
 
@@ -831,6 +826,7 @@ int FiUpdateAssistant::update()
     handl_input(this->filename.c_str());
     return 20;  
 }
+#endif
 int FiUpdateAssistant::queryPatchs(patchSet_t patchs)
 {
     int ret =0;
@@ -868,17 +864,22 @@ err:
 int FiUpdateAssistant::QueryCurrentVersion(version_t *version)
 {
     char buf[100];
-
+    char * outversion = NULL;
+    char* date        = NULL;
+    char* patchno     = NULL;
+    char* hash        = NULL;
+    
     FiGetCurDir(sizeof(buf),buf);
 
     int ret =0;
     ::CORBA::String_var outver;
     ::CORBA::String_var outdate;
     ::CORBA::String_var outpatchno;
+    ::CORBA::String_var outhash;
     
     getLocalVersion(&localVer);    
     MAKE_RPC_INVOKE(rHandle,QueryCurVersion(localVer.version, localVer.date, localVer.patchNo,
-     outver, outdate,outpatchno),ret);
+     outver, outdate,outpatchno, outhash),ret);
     if( ret ==0 )
     {
         ut_dbg("network crash,check the config pls\n");
@@ -886,10 +887,10 @@ int FiUpdateAssistant::QueryCurrentVersion(version_t *version)
         NOTIFY_UPDATELAOAD_FINISH_FAIL();
         return -2;
     }
-    char * outversion=outver.inout();
-    char* date = outdate.inout();
-    char* patchno = outpatchno.inout();
-    
+    outversion=outver.inout();
+    date = outdate.inout();
+    patchno = outpatchno.inout();
+    hash  = outhash.inout();
     if( outversion == NULL || date==NULL)
     {
         NOTIFY_UPDATELAOAD_FINISH_FAIL();
@@ -905,6 +906,10 @@ int FiUpdateAssistant::QueryCurrentVersion(version_t *version)
     strcpy(version->version, outversion);
     strcpy(version->date, date);
     strcpy(version->patchNo, patchno);
+    if (hash)
+    {
+        strcpy(version->reserved.hash, hash);
+    }
     memcpy(&netVer, version, sizeof(version_t));
 
     return 0;
@@ -1053,6 +1058,7 @@ filenotexist:
 }
 
 #endif
+#if 0 //legacy
 int FiUpdateAssistant::handl_input(const char* filename)
 {
     int pack_expect =1;
@@ -1160,7 +1166,7 @@ int FiUpdateAssistant::handl_input(const char* filename)
 
     return ret;
 }
-
+#endif
 int splitstr(char*str,char* delm,std::vector<std::string>& allstrs)
 {
     //char * s= (char*)(layout.c_str());
@@ -1522,17 +1528,6 @@ int FiUpdateAssistant::svc()
 
 #ifdef WIN32
     std::string killself;
-//    if(which != CLIENT)//server
-//    {
-//        killself = installpath +"difscmdmgr\\DifsMgr.exe -S __Child_Process__ \r\n";
-//    }
-//    else
-//    {
-//        killself = installpath +"difscmdmgr\\DifsMgr.exe -C __Child_Process__ \r\n";
-//    }
-//    FiWriteFile(fpinstall,(void*)(killself.c_str()),killself.length());
-//    FiWriteFile(fpinstall,(void*)(killself.c_str()),killself.length());
-//    FiWriteFile(fpinstall,(void*)(killself.c_str()),killself.length());
     FiWriteFile(fpinstall,(void*)("taskkill /f /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /im Fiwatchdog.exe \r\n"));
     FiWriteFile(fpinstall,(void*)("taskkill /f /t /im scm.exe \r\n"),strlen("taskkill /f /t /im scm.exe \r\n"));
     FiWriteFile(fpinstall,(void*)("taskkill /f /t /im fitool.exe \r\n"),strlen("taskkill /f /t /im fitool.exe \r\n"));
@@ -2050,7 +2045,7 @@ int FiUpdateAssistant::svc()
         CheckReg(pack.allRegs);
     }
 
-//    UpdateVersionFile();
+//    writeLocalVer(&netVer);
 
     chdir(rootDir.c_str());//set dir /sobey/fics
     
@@ -2196,6 +2191,7 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
     char *patchno = dstVer->patchNo;
     int ret = 0;
     version_t curVer;
+    int j = 0;
 
     std::string prix;
     prix = prixMatrix[which];
@@ -2316,7 +2312,7 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
         goto finish;
     }
 
-    for(int j=allfolders.size()-1;j>=base;--j)
+    for(j=allfolders.size()-1;j>=base;--j)
     {
         std::string fullname = rootpath;
         fullname+=allfolders[j];
@@ -2364,21 +2360,24 @@ finish:
 //    ret = installSinglePatch();//need to modify hwt
     if (ret == 0)
     {
-        UpdateVersionFile();
+        writeLocalVer(&netVer);
     }
     NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
     return 0;
 }
-
+#if 0
 int FiUpdateAssistant::UpdateVersionFile()
 {
+    string newHash = "";
+    
     newerdate = netVer.date;
     newerver  = netVer.version;
+    newHash   = netVer.reserved.hash;
     if (which == MAS_SRV)
     {
         return 0;
     }
-    if (newerdate == "" || newerver =="")
+    if (newerdate == "" || newerver =="" || newHash == "")
     {
         return 0;
     }
@@ -2428,6 +2427,7 @@ int FiUpdateAssistant::UpdateVersionFile()
 //    }
     
     fputs(name.c_str(),curverfp);
+    if ()
 #ifndef WIN32
     fputs("\n",curverfp);
 #else
@@ -2436,6 +2436,7 @@ int FiUpdateAssistant::UpdateVersionFile()
     fclose(curverfp);
     return 0;
 }
+#endif
 /**
  * @brief 比较服务器的Patchs和本地的包进行对比，并将缺少的包标记到 lossPatchs中
  *

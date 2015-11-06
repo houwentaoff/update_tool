@@ -133,7 +133,8 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
 }
 ::CORBA::Long FiUpdateMgrImpl::QueryCurVersion(const char* inversion, const char* indate, 
 											   const char* inpatchno, ::CORBA::String_out version,
-											   ::CORBA::String_out date, ::CORBA::String_out patchno
+											   ::CORBA::String_out date, ::CORBA::String_out patchno,
+											   ::CORBA::String_out hash
 											   )
 {
     int ret = 0;
@@ -141,6 +142,7 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
 	version = CORBA::string_dup("");
 	date = CORBA::string_dup("");
 	patchno = CORBA::string_dup("");
+    hash  = CORBA::string_dup("");
  
     memset(&localVer, 0, sizeof (version_t));
     memset(&cliVer, 0, sizeof (version_t));
@@ -159,7 +161,8 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
     getLocalVersion(&localVer);
 	version = CORBA::string_dup(localVer.version);
 	date    =  CORBA::string_dup(localVer.date);
-	patchno =  CORBA::string_dup(localVer.patchNo);    
+	patchno =  CORBA::string_dup(localVer.patchNo);
+    hash    =  CORBA::string_dup(localVer.reserved.hash);
 	bool rollbackflag=false;
 	bool updateflag = false;
     

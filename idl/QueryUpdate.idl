@@ -18,7 +18,7 @@ struct PlatformInfoEx
 };
 interface FiUpdateMgr
 {
-    long QueryCurVersion(in string inversion,in string indate,in string inpatchno,out string version,out string date,out string patchno);// which=FISHARE_MDS or FISHARE_CLIENT
+    long QueryCurVersion(in string inversion,in string indate,in string inpatchno,out string version,out string date,out string patchno, out string hash);// which=FISHARE_MDS or FISHARE_CLIENT
     long StartupUpdate(in PlatformInfoEx PInfo,in long which,in string version,in string date,in string patchno,out string filename,out long size,out long long ref);
     long TranslateFile(in long long ref, in long packid, out bfstream bfs,out long checknum,out long flag);
     //trans any(/download) file 

@@ -18,15 +18,20 @@
  */
 
 #include "patch.h"
-#include <pthread.h>
+#ifdef WIN32
+#else
 #include <dirent.h>
+#endif
 #include <sys/stat.h>
+#ifndef WIN32
 #include <unistd.h>
+#include <libgen.h>
+#endif
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libgen.h>
+
 
 #include <errno.h>
 #include <map>
@@ -216,7 +221,6 @@ int downLossPatch(version_t *netVer, patchSet_t lossPatchs)
 {
     int i=0;
     int ret = 0;
-//    char srcFile[512]={0};
     char dstFile[512]={0};
     string tmpDate;
     string curType;
@@ -290,11 +294,11 @@ int patchs2str(patchSet_t lossPatchs, string &set)
  */
 bool matchRE(const char *src, const char *re)
 {
-    char *str = src;
+    char const *str = src;
     char *find = NULL;
     bool ret = false;
     char *last_str = NULL;
-    char *re_tmp = re;
+    char const *re_tmp = re;
 
     while (*str && *re_tmp)
     {
@@ -330,8 +334,11 @@ int getPkgList(char const * path, char const * prefix, char const *suffix, const
     char tmppath[256]={0};
     char *fileName = NULL;
     FILE *fp = NULL;
-
+#ifdef WIN32
+    sprintf(cmdBuf, "dir /b  \"%s\\%s_%s_*%s\"", path, prefix, version, suffix);
+#else
     sprintf(cmdBuf, "find %s -name \'%s_%s_*%s\'", path, prefix, version, suffix);
+#endif
     if (NULL == (fp = popen(cmdBuf, "r")))
     {
         ut_err("popen fail\n");
@@ -351,6 +358,8 @@ err:
 }
 int getDirList(char const * path, vector<string> & dirList)
 {
+#ifdef WIN32
+#else
     DIR*   dir=NULL; 
     struct   dirent*   dirlist; 
     struct   stat   filestat;
@@ -386,7 +395,8 @@ int getDirList(char const * path, vector<string> & dirList)
             dirList.push_back(filename);
         }
     }
-    closedir(dir);    
+    closedir(dir);
+#endif
     return 0;
 }
 /**
@@ -490,9 +500,9 @@ int syncPkg()
  */
 int getPatchNumFromName(char const *tarName)
 {
-    char *version;
-    char *date;
-    char *patchNo;
+    char const *version;
+    char const *date;
+    char const *patchNo;
     char patchNoBuf[64];
     int ipatchNo = 0;
     int i =0;

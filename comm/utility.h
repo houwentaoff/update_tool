@@ -21,6 +21,11 @@ typedef struct
     int       nodeId;
 //    nodeIp_t(unsigned long ip, int nodeId):ip(ip),nodeId(nodeId){};
 }nodeIp_t;
+#ifdef WIN32
+char *do_dirname(char *path);
+char *do_basename(char *path);
+#else
+#endif
 /**
  *  @brief: Returns the current time in common log format in a static
  * char buffer.

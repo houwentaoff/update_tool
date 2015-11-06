@@ -39,8 +39,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
-
-
 #include <sys/types.h> 
 #include <sys/param.h> 
 #include <net/if_arp.h> 
@@ -116,7 +114,7 @@ int getIPfromXml(std::vector<nodeIp_t>& vecIpAddr)
     vector<string>::iterator iter;
     vector<nodeIp_t>::iterator it;
     int nodeId;
-//#ifndef WIN32    
+
     if (!FiIsExistFile(cfgConfig))
     {
 //        if ()//服务端不允许不存在
@@ -127,25 +125,6 @@ int getIPfromXml(std::vector<nodeIp_t>& vecIpAddr)
 #else
 		sprintf(cmdBuf, "find ../client/Config -name \'FicsConfig.xml\'");
 #endif
-
-#ifdef WIN32
-		if (NULL ==(fp = _popen(cmdBuf, "r")))
-		{
-            ut_err("_popen error \n");
-			ret = -2;
-			return ret;
-		}
-        do
-        {
-            r = fscanf(fp, "%[^\n]", tmppath);
-            fgetc(fp);
-            if (r != EOF)
-            {
-                pathList.push_back(tmppath);
-            }
-        }while (r != EOF);
-        _pclose(fp);
-#else
         if (NULL == (fp = popen(cmdBuf, "r")))
         {
             ut_err("popen error errno[%d]\n", errno);
@@ -154,7 +133,7 @@ int getIPfromXml(std::vector<nodeIp_t>& vecIpAddr)
         }
         do
         {
-            r = fscanf(fp, "%[^\n]", tmppath);
+            r = fscanf(fp, "%[^\n]s", tmppath);
             fgetc(fp);
             if (r != EOF)
             {
@@ -162,7 +141,6 @@ int getIPfromXml(std::vector<nodeIp_t>& vecIpAddr)
             }
         }while (r != EOF);
         pclose(fp);
-#endif
     }
     else
     {
@@ -345,16 +323,17 @@ int writeLocalVer(version_t *ver)
             "version:%s\n"
             "date:%s\n"
             "patch:%s\n"
-            "file_name:fics_%s_%s",
-            ver->version, ver->date, ver->patchNo, ver->version, ver->date);
-    patchNo = ver->patchNo;
-    if (*patchNo)
-    {
-        sprintf(patchVerBuf+strlen(patchVerBuf),
-                "_%s", ver->patchNo);
-    }        
+            "file_name:fics_%s_%s_%s\n"
+            "hash:%s\n",
+            ver->version, ver->date, ver->patchNo,
+            ver->version, ver->date, ver->patchNo,
+            ver->reserved.hash);
 
+#ifdef WIN32
+    fp = fopen("../patch_version.tmp", "wb+");
+#else
     fp = fopen("/sobey/fics/patch_version.tmp", "wb+");
+#endif
     if (!fp)
     {
         ut_err("fp is null\n");
@@ -362,7 +341,11 @@ int writeLocalVer(version_t *ver)
     }
     fputs(patchVerBuf, fp);
     fclose(fp);
+#ifdef WIN32    
+    sprintf(cmdBuf, "copy ../patch_version.tmp %s -f", _PATH_VERSION);
+#else
     sprintf(cmdBuf, "mv /sobey/fics/patch_version.tmp %s -f", _PATH_VERSION);
+#endif
     system(cmdBuf);
     return 0;
 err:
@@ -1093,3 +1076,43 @@ char *get_commonlog_time(void)
 }
 
 
+#ifdef WIN32
+char *do_dirname(char *path)
+{
+    char *src = path;
+    char *pos = NULL;
+    char *lastPos = NULL;
+
+    if (!path)
+    {
+        return NULL;
+    }
+    while (pos = strchr(src, '\\'))
+    {
+        lastPos = pos;
+    }
+    *lastPos = '\0';
+    return src;
+}
+char *do_basename(char *path)
+{
+    char *src = path;
+    char *pos = NULL;
+    int len   = 0;
+
+    if (!path)
+    {
+        return NULL;
+    }
+    len = strlen(src);
+
+    while (src[--len]!='\\' && len >= 0){;}
+    if (len > 0)
+    {
+        pos  = &src[len];
+        *pos = '\0';
+        pos++;
+    }
+    return pos;
+}
+#endif

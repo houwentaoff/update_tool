@@ -23,8 +23,6 @@
 #include <stdio.h>
 #include <string>
 
-
-//extern FILE *stdout;
 using namespace std;
 
 #define  FiEnableCoreDumps()\
@@ -34,7 +32,6 @@ using namespace std;
     limit.rlim_max = RLIM_INFINITY;\
     setrlimit(RLIMIT_CORE, &limit);\
 }
-//check if FicsConfig changed restart FiUpdateLoader
 int main(int argc, char **argv)
 {
 	char _path[260];
@@ -113,12 +110,8 @@ int main(int argc, char **argv)
     FiEnableCoreDumps();
 #endif
 	FiGetCurDir(sizeof(_path),_path);
-#ifdef WIN32
-    if (0 == _chdir(_path)) 
-#else
-    if (0 == chdir(_path))
-#endif
-        
+
+    if (0 == chdir(_path))       
     {
         ut_dbg("change cur dir success\n");
     }
@@ -155,7 +148,6 @@ int main(int argc, char **argv)
         ut_err("update config : network.xml is not exist. try to auto generate.\n");
     }
     //linux 1. get local ip from ifconfig & ficsConfig.xml,2.get serverip from FicsConfig.xml 
-//#ifndef WIN32
 
     if (getCurLocalIp(localIp) < 0)
     {
@@ -168,14 +160,11 @@ int main(int argc, char **argv)
         ut_err("get server download ip fail\n");
         goto err;
     }
-//    unsigned long tmp = vecIpAddr[0];
     for (it = vecIpAddr.begin(); it != vecIpAddr.end(); it++)
     {
         string  ip = inet_ntoa(*((struct in_addr*)&(*it)));
         serverIp.push_back(ip);
     }
-//    serverIp[0] = inet_ntoa(*((struct in_addr*)&vecIpAddr[0]));
-//    serverIp[1] = inet_ntoa(*((struct in_addr*)&vecIpAddr[1]));
     xmlmaker.SetDoc("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n");     
     xmlmaker.AddElem("UpMgrConfig");
     xmlmaker.IntoElem();
@@ -184,10 +173,15 @@ int main(int argc, char **argv)
     for (int i=0; i<size; i+=2)
     {
         xmlmaker.AddElem("UpMgrIp", serverIp[i].c_str());
-        xmlmaker.AddElem("UpMgrBackIp", serverIp[i+1].c_str());
+		if (i+1 >= size)
+		{
+			xmlmaker.AddElem("UpMgrBackIp", serverIp[i].c_str());
+		}
+		else
+		{
+			xmlmaker.AddElem("UpMgrBackIp", serverIp[i+1].c_str());
+		}
     }
-//    xmlmaker.AddElem("UpMgrIp", serverIp[0].c_str());
-//    xmlmaker.AddElem("UpMgrBackIp", serverIp[1].c_str());
 #ifdef WIN32
     if (!xmlmaker.Save(_T("../config/network.xml")))
 #else
@@ -200,7 +194,6 @@ int main(int argc, char **argv)
     {
         ut_dbg("generate network.xml success\n");
     }
-//#endif
     FiUpdateAssistant::getinstance()->set(&evnt);
     FiUpdateAssistant::getinstance()->startup();
     FiUpdateAssistant::getinstance()->ConnectUpMgr();
@@ -257,7 +250,7 @@ int main(int argc, char **argv)
              *  4. rollback
              *-----------------------------------------------------------------------------*/
             syncPkg();
-#if 0
+#if 0 //lecgy
             FiUpdateAssistant::getinstance()->update();
 #else             
             FiUpdateAssistant::getinstance()->RollBack(&netVer);

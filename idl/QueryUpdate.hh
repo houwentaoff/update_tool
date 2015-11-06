@@ -303,7 +303,7 @@ class _objref_FiUpdateMgr :
   public virtual omniObjRef
 {
 public:
-  ::CORBA::Long QueryCurVersion(const char* inversion, const char* indate, const char* inpatchno, ::CORBA::String_out version, ::CORBA::String_out date, ::CORBA::String_out patchno);
+  ::CORBA::Long QueryCurVersion(const char* inversion, const char* indate, const char* inpatchno, ::CORBA::String_out version, ::CORBA::String_out date, ::CORBA::String_out patchno, ::CORBA::String_out hash);
   ::CORBA::Long StartupUpdate(const ::PlatformInfoEx& PInfo, ::CORBA::Long which, const char* version, const char* date, const char* patchno, ::CORBA::String_out filename, ::CORBA::Long& size, ::CORBA::LongLong& ref);
   ::CORBA::Long TranslateFile(::CORBA::LongLong ref, ::CORBA::Long packid, ::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag);
   ::CORBA::Long starupTrans(const char* fileName, ::CORBA::Long& size, ::CORBA::LongLong& fileRef);
@@ -343,7 +343,7 @@ class _impl_FiUpdateMgr :
 public:
   virtual ~_impl_FiUpdateMgr();
 
-  virtual ::CORBA::Long QueryCurVersion(const char* inversion, const char* indate, const char* inpatchno, ::CORBA::String_out version, ::CORBA::String_out date, ::CORBA::String_out patchno) = 0;
+  virtual ::CORBA::Long QueryCurVersion(const char* inversion, const char* indate, const char* inpatchno, ::CORBA::String_out version, ::CORBA::String_out date, ::CORBA::String_out patchno, ::CORBA::String_out hash) = 0;
   virtual ::CORBA::Long StartupUpdate(const ::PlatformInfoEx& PInfo, ::CORBA::Long which, const char* version, const char* date, const char* patchno, ::CORBA::String_out filename, ::CORBA::Long& size, ::CORBA::LongLong& ref) = 0;
   virtual ::CORBA::Long TranslateFile(::CORBA::LongLong ref, ::CORBA::Long packid, ::bfstream_out bfs, ::CORBA::Long& checknum, ::CORBA::Long& flag) = 0;
   virtual ::CORBA::Long starupTrans(const char* fileName, ::CORBA::Long& size, ::CORBA::LongLong& fileRef) = 0;
