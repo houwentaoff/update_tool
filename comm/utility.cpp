@@ -492,6 +492,13 @@ int getLocalVersion(version_t *version)
             p = r == 0 ? strchr(buf, ':')+1 : buf;
             strcpy(version->date, p);
         }
+        else if (0 == strncmp(buf, "hash:", strlen ("hash:")))
+        {
+            r = fscanf(fp, "%*[ ]%[^\n]s", buf);//skip space huiche
+            p = r == 0 ? strchr(buf, ':')+1 : buf;
+            strcpy(version->reserved.hash, p);
+        }
+        
     }
     fclose(fp);
   

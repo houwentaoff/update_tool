@@ -80,6 +80,15 @@ int genHashFromHis(const char *path, string & hashValue);
  */
 int addVer2His(version_t *newVer, const char * path);
 /**
+ * @brief 
+ *
+ * @param name 文件名(获取版本号写入history中)
+ *
+ * @return 
+ * @sa addVer2His的封装
+ */
+int record2History(const char *name);
+/**
  * @brief 从指定的目录(/sobey/fics/down /sobey/fics/update/) 获取当前补丁包的所有路径列表
  *
  * @param path

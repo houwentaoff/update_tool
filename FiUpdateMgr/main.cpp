@@ -229,7 +229,7 @@ void *selfUpdate(void *params)
             //update local
             if (!updatePkg(&newVer))
             {
-                ut_dbg("update pkg fail patchNo:%s !!!! no pkg invalid ?\n", newVer.patchNo);
+                ut_dbg("update pkg fail patchNo:%s !!!! no pkg valid ?\n", newVer.patchNo);
             }
             memcpy((void *)&FiUpdateAssistant::getinstance()->netVer,
                     (void *)&newVer, sizeof(version_t));

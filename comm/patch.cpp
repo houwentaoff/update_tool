@@ -120,6 +120,19 @@ int genHashFromHis(const char *path, string & hashValue)
 err:
     return -1;
 }
+int record2History(const char *fileName)
+{
+    version_t curVer;
+    if (!fileName)
+    {
+        ut_err("file name is null\n");
+        return -1;
+    }
+    memset(&curVer, 0, sizeof(version_t));
+    getVerFromName(fileName, &curVer);
+    addVer2His(&curVer, HISTORY);
+    return 0;
+}
 int addVer2His(version_t *newVer, const char * path)
 {
     FILE *fp = NULL;

@@ -647,9 +647,7 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
         }
         else//append to history
         {
-            memset(&curVer, 0, sizeof(version_t));
-            getVerFromName(this->filename.c_str(), &curVer);
-            addVer2His(&curVer, HISTORY);
+            record2History(this->filename.c_str());
             writeLocalVer(&curVer);
         }
     }
@@ -671,6 +669,12 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
                 {
                     ut_err("install old pkg %s fail!!!!\n", pkgList[i].c_str());
                 }
+                else//append to history
+                {
+                    record2History(pkgList[i].c_str());
+                    writeLocalVer(&curVer);
+                }
+
             }
         }
         UpdateVersionFile();//¶àÓàµÄ
@@ -2326,9 +2330,7 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
         //fullname += " > rollback_"+allfolders[j]+".log";
         FiExecuteShell(fullname.c_str());
         //update history
-        memset(&curVer, 0, sizeof(version_t));
-        getVerFromName(allfolders[j].c_str(), &curVer);
-        addVer2His(&curVer, HISTORY);
+        record2History(allfolders[j].c_str());
 //        writeLocalVer(&curVer);        
         //FiExecuteShell("cd ../");
     }
@@ -2338,9 +2340,7 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
     }
     else
     {
-        memset(&curVer, 0, sizeof(version_t));
-        getVerFromName(allfolders[j].c_str(), &curVer);
-        addVer2His(&curVer, HISTORY);
+        record2History(allfolders[j].c_str());
         writeLocalVer(&curVer);
     }
 
