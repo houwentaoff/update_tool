@@ -633,9 +633,11 @@ int getMD5FromLocal(const char *fileName, string &localMd5)
     {
         return 0;
     }
-
+#ifdef WIN32
+    sprintf(cmdBuf, "md5sum -u %s", fileName);
+#else
     sprintf(cmdBuf, "md5sum %s", fileName);
-
+#endif
     if (NULL ==(fp = popen(cmdBuf, "r")))
     {
         ut_err("popen fail\n");
