@@ -128,6 +128,8 @@ bool updateLocal(version_t *pver)
     std::string name;
     std::string nameTmp;
     bool exist = false;
+    char fullName[256]={0};
+    char downPkgDir[256]={0};
 
     if (!pver)
     {
@@ -163,8 +165,6 @@ bool updateLocal(version_t *pver)
     ut_dbg("fiupdate loader get config platform:linux %d bit\n",info.OSRunMode);
     fflush(stdout);    
     //find location.
-    char fullName[256]={0};
-    char downPkgDir[256]={0};
     struct stat statBuf;
     strcpy(fullName, _PATH_PKG_DL);
     sprintf(fullName+strlen(fullName), "fics_%s_%s_%s",
@@ -201,7 +201,7 @@ bool updateLocal(version_t *pver)
         }
         else
         {
-            ut_err("tar is not exist[%s] try Compatible version!!\n", fullName.c_str());
+            ut_err("tar is not exist[%s] try Compatible version!!\n", fullName);
             continue;
         }
     }
