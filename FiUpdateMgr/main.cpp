@@ -124,7 +124,10 @@ bool updateLocal(version_t *pver)
     char *ver = pver->version;
     char *date = pver->date;
     char *patchNo = pver->patchNo;
+    int kind = 0;
     std::string name;
+    std::string nameTmp;
+    bool exist = false;
 
     if (!pver)
     {
@@ -160,11 +163,14 @@ bool updateLocal(version_t *pver)
     ut_dbg("fiupdate loader get config platform:linux %d bit\n",info.OSRunMode);
     fflush(stdout);    
     //find location.
-    char fullName[256];
+    char fullName[256]={0};
+    char downPkgDir[256]={0};
     struct stat statBuf;
     strcpy(fullName, _PATH_PKG_DL);
     sprintf(fullName+strlen(fullName), "fics_%s_%s_%s",
             pver->version, pver->date, pver->patchNo);
+    sprintf(downPkgDir, "%sfics_%s_%s_%s",
+            _PATH_PKG_DL, pver->version, pver->date, pver->patchNo);
     if (-1 == lstat(fullName, &statBuf))
     {
         ut_err("does the pkg dir not exist?\n");
@@ -182,11 +188,26 @@ bool updateLocal(version_t *pver)
     name += date;
     name += "_";
     name += patchNo;
+    nameTmp = name;
     name += optinalname[0];
-    sprintf(fullName + strlen(fullName), "/%s", name.c_str());
-    if (!FiIsExistFile(fullName))
+    for (kind = 0; kind < optinalname.size();kind++)
     {
-        ut_err("tar is not exist\n");
+        name = nameTmp + optinalname[kind];
+        sprintf(fullName, "%s%s", downPkgDir, name.c_str());
+        if (FiIsExistFile(fullName))
+        {
+            exist = true;
+            break;
+        }
+        else
+        {
+            ut_err("tar is not exist[%s] try Compatible version!!\n", fullName.c_str());
+            continue;
+        }
+    }
+    if (!exist)
+    {
+        ut_err("all compatible tar is not exist\n");
         goto err;
     }
     //trans to curDir

@@ -2463,6 +2463,7 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
     string localMd5;
     int patchNo = 0;
     char *suffix = NULL;
+    int kind     = 0;
     
     int basePatch = getCurBaseVer(atoi(netVer->patchNo));
     std::vector<std::string> optinalname;
@@ -2482,46 +2483,54 @@ int FiUpdateAssistant::comparePatchs(version_t *netVer, patchSet_t serPatchs, pa
             patchNo = basePatch * BASEINTERVAL;
             //check local pkg /sobey/fics/update/fics_v1.0.0_2015.10.14(*)_4005 暂时只检查目录不检查tar.gz的压缩包 fics_v1.0.0_date(skip)_4005
             // i ==> patchNum
-            sprintf(tmpPath, "%s_%s_*_%d%s", prixMatrix[which], version.c_str(), patchNo+i, optinalname[0].c_str());//正则 need to modify not fics_... client_... "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"; "server_v1.0.0_*_4001_32_Linux2.6.tar.gz
-            //first : match dir
-            strcpy(tmpPathDir, tmpPath);
-            suffix = strstr(tmpPathDir, ".tar.gz");
-            if (suffix)
+            for (kind=0; kind < optinalname.size(); kind++)
             {
-                *suffix = '\0'; 
-            }
-            for (itr = pathDirList.begin(); itr!= pathDirList.end(); itr++)
-            {
-                if (matchRE(itr->c_str(), tmpPathDir))
+                sprintf(tmpPath, "%s_%s_*_%d%s", prixMatrix[which], version.c_str(), patchNo+i, optinalname[kind].c_str());//正则 need to modify not fics_... client_... "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz"; "server_v1.0.0_*_4001_32_Linux2.6.tar.gz
+                //first : match dir
+                strcpy(tmpPathDir, tmpPath);
+                suffix = strstr(tmpPathDir, ".tar.gz");
+                if (suffix)
                 {
-                    exist = true;
-                    break;
+                    *suffix = '\0'; 
                 }
-            }
-            //second : match tar.gz
-            if (!exist && !pkgList.empty())
-            {
-                for (itr = pkgList.begin(); itr!=pkgList.end(); itr++)
+                
+                for (itr = pathDirList.begin(); itr!= pathDirList.end(); itr++)
                 {
-                    if (matchRE(itr->c_str(), tmpPath))
+                    if (matchRE(itr->c_str(), tmpPathDir))
                     {
-                        /*-----------------------------------------------------------------------------
-                         *  1. get md5sum from server
-                         *  2. compar = true; break; 
-                         *-----------------------------------------------------------------------------*/
-                        remoteMD5 = "";
-                        localMd5  = "";
-                        if (getMD5FromRemote(itr->c_str(), remoteMD5) < 0)
+                        exist = true;
+                        break;
+                    }
+                }
+                //second : match tar.gz
+                if (!exist && !pkgList.empty())
+                {
+                    for (itr = pkgList.begin(); itr!=pkgList.end(); itr++)
+                    {
+                        if (matchRE(itr->c_str(), tmpPath))
                         {
-                            ut_err("get remote md5 fail\n");
-                        }
-                        getMD5FromLocal(itr->c_str(), localMd5);
-                        if (remoteMD5 == localMd5)
-                        {
-                            exist = true;
-                            break;
+                            /*-----------------------------------------------------------------------------
+                             *  1. get md5sum from server
+                             *  2. compar = true; break; 
+                             *-----------------------------------------------------------------------------*/
+                            remoteMD5 = "";
+                            localMd5  = "";
+                            if (getMD5FromRemote(itr->c_str(), remoteMD5) < 0)
+                            {
+                                ut_err("get remote md5 fail\n");
+                            }
+                            getMD5FromLocal(itr->c_str(), localMd5);
+                            if (remoteMD5 == localMd5)
+                            {
+                                exist = true;
+                                break;
+                            }
                         }
                     }
+                }
+                if (exist)
+                {
+                    break;
                 }
             }
             if (!exist)//目录不存在 1. get dir name. 2. cmp file name
