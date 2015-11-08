@@ -72,6 +72,7 @@ FiUpdateAssistant::FiUpdateAssistant(FiEvent* hEvent)
     totalPkg = 0;
     curCountInstalled = 0;
     installOver = false;
+    ShutDown    = false;
 
     memset(&localVer, 0, sizeof(version_t));
     memset(&netVer, 0, sizeof(version_t));
@@ -94,6 +95,7 @@ FiUpdateAssistant::FiUpdateAssistant()
     totalPkg = 0;
     curCountInstalled = 0;
     installOver = false;
+    ShutDown    = false;
     memset(&localVer, 0, sizeof(version_t));
     memset(&netVer, 0, sizeof(version_t));
 }
@@ -1536,6 +1538,7 @@ int FiUpdateAssistant::svc()
     FiWriteFile(fpuninstall,(void*)("taskkill /f /im Fiwatchdog.exe \r\n"),strlen("taskkill /f /im Fiwatchdog.exe \r\n"));
     FiWriteFile(fpuninstall,(void*)("taskkill /f /t /im scm.exe \r\n"),strlen("taskkill /f /t /im scm.exe \r\n"));
     FiWriteFile(fpuninstall,(void*)("taskkill /f /t /im fitool.exe \r\n"),strlen("taskkill /f /t /im fitool.exe \r\n"));
+#if 0//comment by hwt
     std::string delUpdate  = "del ";
     delUpdate         += rootpath;
     delUpdate         += "FiUpdateLoader.exe.old \r \n";
@@ -1546,7 +1549,7 @@ int FiUpdateAssistant::svc()
            renUpdate  += "FiUpdateLoader.exe.old \r \n";
     //FiExecuteShell(renUpdate.c_str());
     FiWriteFile(fpinstall,(void*)(renUpdate.c_str()),strlen(renUpdate.c_str()));
-
+#endif
     //FiWriteFile(fpinstall,(void*)(delUpdate.c_str()),strlen(delUpdate.c_str()));
 
 #else
@@ -1691,22 +1694,22 @@ int FiUpdateAssistant::svc()
             cfullname +=layout.strName.c_str();
             if(isdir)
             {
-                sprintf(backcmd,"MD %sbackup\\%s \r\n",downfilefullname.c_str(),layout.strName.c_str());
+                sprintf(backcmd,"MD %sbackup\\%s \r\n", pkgDir.c_str(), RelativePkgDir.c_str());
                 FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             }
-
-            sprintf(backcmd,"%s \"%s%s\" %sbackup\\%s \r\n",(isdir)?"xcopy /E/H /Y ":"copy  /Y ",location,layout.strName.c_str(),
+            //back 
+            sprintf(backcmd,"%s \"%s%s\" %sbackup\\%s \r\n",(isdir)?"xcopy /E/H /Y ":"copy  /Y ", location,layout.strName.c_str(),
                 downfilefullname.c_str(),isdir?std::string(std::string(layout.strName.c_str())).c_str():"");
             FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             //FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             //FiWriteFile(fpinstall," \r\n",strlen(" \r\n"));
             //FiWriteFile(fpinstall,pause5,strlen(pause5));
-
+            //install
             sprintf(cmd,"%s \"%s%s\"  \"%s%s\" \r\n",(isdir)?"xcopy /E/H /Y ":"copy /Y ",downfilefullname.c_str(),layout.strName.c_str(),
                 location,std::string(std::string(layout.strName.c_str())).c_str());
             FiWriteFile(fpinstall,cmd,strlen(cmd));
             //FiWriteFile(fpinstall,pause5,strlen(pause5));
-
+            //recover
             sprintf(uncmd,"%s %s%s \r\n",(isdir)?"rd /s/q ":"del /s/q  ",location,layout.strName.c_str());
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
             sprintf(uncmd,"%s  %sbackup\\%s %s\r\n","move",downfilefullname.c_str(),layout.strName.c_str(),location);
@@ -1744,6 +1747,7 @@ int FiUpdateAssistant::svc()
 #ifdef WIN32
             cfullname += "backup\\";
             cfullname +=layout.strName.c_str();
+            //back
             sprintf(cmd,"%s  %s%s %sbackup \r\n","move" ,location,layout.strName.c_str(),downfilefullname.c_str());
             FiWriteFile(fpinstall,cmd,strlen(cmd));
             FiWriteFile(fpinstall,cmd,strlen(cmd));
@@ -1754,6 +1758,7 @@ int FiUpdateAssistant::svc()
             }
             //sprintf(backcmd,"%s  %s%s %sbackup\\ \r\n",(isdir)?"xcopy /E/H /Y ":"copy /Y ",location,layout.strName.c_str(),downfilefullname.c_str());
             //sprintf(cmd,"%s %s%s\r\n",(isdir)?"rd /S /Q ":" del /S /Q",location,layout.strName.c_str());
+            //recover
             sprintf(uncmd,"%s  %sbackup\\%s %s%s\r\n",(isdir)?"xcopy /E/H /Y ":"copy /Y ",downfilefullname.c_str(),layout.strName.c_str(),location,isdir?std::string(std::string(layout.strName.c_str())).c_str():"");
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
 #else
@@ -1791,8 +1796,10 @@ int FiUpdateAssistant::svc()
                 sprintf(cmd,"MD %s%s \r\n",location,layout.strName.c_str());
                 FiWriteFile(fpinstall,cmd,strlen(cmd));
             }
+            //install
             sprintf(cmd,"%s %s%s %s%s\r\n",(isdir)?"xcopy /E/H /Y":"xcopy /Y ",downfilefullname.c_str(),layout.strName.c_str(),
                 location,isdir?std::string(std::string(layout.strName.c_str())+"\\").c_str():"");
+            //recover
             sprintf(uncmd,"%s %s%s\r\n",(isdir)?"rd /S /Q":"del /S /Q ",location,layout.strName.c_str());
 #else
             // sprintf(backcmd,"mv %s backup/\n",location);
@@ -2068,6 +2075,7 @@ int FiUpdateAssistant::svc()
 #endif
         //FiWriteFile(fpinstall,(void*)(str.c_str()),str.length());
 //        FiWriteFile(fpuninstall,(void*)(str.c_str()),str.length());
+        ShutDown    = true;
         if (curCountInstalled == totalPkg)
         {
             FiExecuteShell(str.c_str());
@@ -2099,6 +2107,7 @@ bool FiUpdateAssistant::restartAPP(const char *app)
     const char *elf = NULL;
     string startupself;
     string rootDir;
+    char  cmdBuf[256]={0};
 #ifdef WIN32
     rootDir = "c:\\Sobey\\Fics\\";
     startupself = rootDir + "FiWatchDog.exe \r\n";
@@ -2110,6 +2119,15 @@ bool FiUpdateAssistant::restartAPP(const char *app)
     elf = startupself.c_str();
     ut_dbg("restart %s \n", elf);
     fflush(stdout);
+    if (ShutDown)
+    {
+#ifdef WIN32   //WIN下强制重启
+        sprintf(cmdBuf, "shutdown -r ");
+#else
+        sprintf(cmdBuf, "shutdown -r now");
+#endif
+        system(cmdBuf);
+    }
     //undo 1>log
     //do log>1
 #ifdef WIN32

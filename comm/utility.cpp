@@ -1077,19 +1077,25 @@ char *get_commonlog_time(void)
 
 
 #ifdef WIN32
-char *do_dirname(char *path)
+char *do_dirname(char *path)//c:\sobey\fics\update\
 {
     char *src = path;
-    char *pos = NULL;
+    char *pos = path;
     char *lastPos = NULL;
+    int len = 0;
 
     if (!path)
     {
         return NULL;
     }
-    while (pos = strchr(src, '\\'))
+    len = strlen(path);
+    if (src[len-1] == '\\')
     {
-        lastPos = pos;
+        return path;
+    }
+    while (pos = strchr(pos, '\\'))
+    {
+        lastPos = pos++;
     }
     *lastPos = '\0';
     return src;

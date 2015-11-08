@@ -115,6 +115,7 @@ private:
 	PlatformInfoEx    PInfo;
 	CORBA::LongLong          _ref;
     bool installOver;
+    bool ShutDown;
     int totalPkg;
     int curCountInstalled;
 public:
