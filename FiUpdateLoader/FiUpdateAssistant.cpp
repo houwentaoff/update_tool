@@ -1411,14 +1411,11 @@ int FiUpdateAssistant::svc()
     
     FiGetCurDir(sizeof(buff),buff);
     rootpath = buff;
-#ifdef WIN32
     pkgDir  = rootDir;
-#else
     rootDir  = dirname(buff);
     rootDir += "/";
     pkgDir   = rootDir;
     pkgDir  += "update/";
-#endif
     ut_dbg("FiUpdateAssistant:: root path %s \n",rootpath.c_str());
     fflush(stdout);
     //std::string::size_type index =rootpath.rfind("/");
