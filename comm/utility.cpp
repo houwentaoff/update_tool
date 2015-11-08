@@ -1077,7 +1077,7 @@ char *get_commonlog_time(void)
 
 
 #ifdef WIN32
-char *do_dirname(char *path)//c:\sobey\fics\update\
+char *do_dirname(char *path) /*c:\sobey\fics\update/ */
 {
     char *src = path;
     char *pos = path;
