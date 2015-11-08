@@ -1089,9 +1089,10 @@ char *do_dirname(char *path)//c:\sobey\fics\update\
         return NULL;
     }
     len = strlen(path);
-    if (src[len-1] == '\\')
+    while ((src[len-1] == '\\' || src[len-1] == '/') && len>0)
     {
-        return path;
+        len--;
+        src[len] = '\0';
     }
     while (pos = strchr(pos, '\\'))
     {
