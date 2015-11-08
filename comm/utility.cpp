@@ -1097,7 +1097,7 @@ char *do_dirname(char *path)
 char *do_basename(char *path)
 {
     char *src = path;
-    char *pos = NULL;
+    char *pos = path;
     int len   = 0;
 
     if (!path)

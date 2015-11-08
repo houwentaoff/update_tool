@@ -32,6 +32,7 @@
 #define _PATH_PKG_DL         "/sobey/fics/download/"   /*默认路径*/
 
 #include "debug.h"
+#include "os.h"
 
 typedef struct 
 {
@@ -51,22 +52,4 @@ typedef enum
     MAS_SRV  /*更新软件包服务机*/   
 }dev_e;
 
-#ifdef WIN32
-#define dirname(x)        do_dirname(x)
-#define basename(x)       do_basename(x)
-#define popen(x, y)       _popen(x, y)
-#define pclose(x)         _pclose(x)
-#define chdir(x)          _chdir(x)
-//#define sleep(x)          Sleep(1000*x)
-#define errno                 (-1)//
-#define S_ISDIR(m) (((m) & 0170000) == (0040000))
-#define ACCESS _access
-#define MKDIR(a) _mkdir((a))
-//#define stat(x, y)           _stat(x, y)
-#else
-#define ACCESS access
-#define MKDIR(a) mkdir((a),0755)
-//#define dirname(x)       dirname(x)
-//#define basename(x)      basname(x)
-#endif
 #endif
