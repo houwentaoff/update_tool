@@ -359,6 +359,46 @@ err:
 int getDirList(char const * path, vector<string> & dirList)
 {
 #ifdef WIN32
+    //此结构说明参MSDN;
+    WIN32_FIND_DATA FindFileData;
+    //查找文件的句柄;
+    HANDLE hListFile;
+    char szFullPath[MAX_PATH];
+    //相对路径;
+    char szFilePath[MAX_PATH];
+    //构造相对路径;
+    sprintf(szFilePath, "%s\\*", path);
+    //查找第一个文件，获得查找句柄，如果FindFirstFile返回INVALID_HANDLE_VALUE则返回;
+    if((hListFile = FindFirstFile(szFilePath, &FindFileData)) == INVALID_HANDLE_VALUE)
+    {
+        //查找文件错误;
+        return false;
+    }
+    else
+    {
+        do 
+        {
+            //过滤.和..;
+            //“.”代表本级目录“..”代表父级目录;
+            if( FindFileData.cFileName[0]==(TCHAR)('.') )
+            {
+                continue;
+            }
+            std::string filename = FindFileData.cFileName;
+            //构造全路径;
+            sprintf(szFullPath, "%s\\%s", path, FindFileData.cFileName);
+
+
+            //如果是文件夹，则递归调用EnmuDirectory函数;
+            if(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
+                dirList.push_back(filename);
+            }
+            
+        }while(FindNextFile(hListFile, &FindFileData));
+    }
+    //关闭句柄;
+    FindClose(hListFile);
 #else
     DIR*   dir=NULL; 
     struct   dirent*   dirlist; 
