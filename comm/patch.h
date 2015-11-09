@@ -295,4 +295,12 @@ int addEleMD52Cache(const char* filename, string &localMd5);
  * @return 
  */
 int delEleMD52Cache(const char* filename, string &localMd5);
+/**
+ * @brief 去掉字符串结尾的空格 
+ *
+ * @param str
+ *
+ * @return 
+ */
+int stripSpace(char *str);
 #endif

@@ -25,7 +25,7 @@
 #define LEN_BUF                 100/*  */
 #define HASH_LEN                200
 #ifdef WIN32
-#define _PATH_VERSION        "../patch_version"
+#define _PATH_VERSION        "..\\patch_version"
 #else
 #define _PATH_VERSION        "/sobey/fics/patch_version" /*Ä¬ÈÏÂ·¾¶*/           /*  */
 #endif

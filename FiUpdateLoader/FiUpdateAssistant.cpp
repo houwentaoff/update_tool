@@ -640,6 +640,8 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
         else//append to history
         {
             record2History(this->filename.c_str());
+            memset(&curVer, 0, sizeof(version_t));
+            getVerFromName(this->filename.c_str(), &curVer);            
             writeLocalVer(&curVer);
         }
     }
@@ -664,6 +666,8 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
                 else//append to history
                 {
                     record2History(pkgList[i].c_str());
+                    memset(&curVer, 0, sizeof(version_t));
+                    getVerFromName(this->filename.c_str(), &curVer);                        
                     writeLocalVer(&curVer);
                 }
 
@@ -727,7 +731,7 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
         {
 //            chdir("/sobey/fics/update");
 #ifdef WIN32
-            sprintf(cmdBuf, ".\\%s\\install.sh", fileName);
+            sprintf(cmdBuf, ".\\%s\\install.bat", fileName);
 #else
             sprintf(cmdBuf, "./%s/install.sh", fileName);
 #endif
@@ -1400,14 +1404,14 @@ int FiUpdateAssistant::setFile(std::string name)
 }
 int FiUpdateAssistant::svc()
 {
-    std::vector<FilePair> vecChangedFiles;
     char buff[200];
     std::string rootpath;
     string pkgDir;//rootDir + update + server_v1.0.0
-    string rootDir;//->/sobey/fics
+    string rootDir;//->/sobey/fics c:\\sobey\\fics
     string RelativePkgDir;//->  dirname: libs/ ,win_client/x32/
-    string RelativePCDir;//->  dirname: libs , client, mds
+    string RelativePCDir;//->  dirname: libs , client, mds    config, c:\windows\system32 
     string pwdFullPath;//rootDir + RelativePCDir + [FileName] 
+    string fileName;// *.sys  *.pdb *.exe updateLoader.exe fiwatchdog
     
     FiGetCurDir(sizeof(buff),buff);
     rootpath = buff;
@@ -1603,40 +1607,35 @@ int FiUpdateAssistant::svc()
     ut_dbg("try to update %d items\n",pack.allFiles.size());
     fflush(stdout);
 
+    pwdFullPath = rootDir;  
+
     for(it=pack.allFiles.begin(); it!=pack.allFiles.end(); ++it)
     {
         File_Layout_t& layout = *it;
+        std::string &fileloc = layout.strLocation;//libs/*  
         char location[200]={0};
         char strTmpBuf[256] = {0};
-        strcpy(strTmpBuf, layout.strName.c_str());
-        strcpy(location, installpath.c_str());// %root -> /sobey/fics
-        std::string &fileloc = layout.strLocation;//libs/*  
-        RelativePkgDir = dirname(strTmpBuf);
-        RelativePkgDir += "/";
-        pwdFullPath = rootDir;  
-        int len = fileloc.length();
+        char fileNameBuf[256] = {0};
+        int len = 0;
+        fileName = "";
+        //strip space
+        stripSpace((char *)layout.strLocation.c_str());
+        stripSpace((char *)layout.strName.c_str());
 #ifdef WIN32
-        if( fileloc[len-1] == '/')
-        {
-            fileloc[len-1] = '\\';
-        }
-        if( fileloc[len-1] != '\\')
-        {
-            fileloc.push_back('\\');
-        }
-#else
-        if( fileloc[len-1] != '/')
-        {
-            fileloc.push_back('/');
-        }
+        replace((char *)layout.strLocation.c_str(), '/', '\\');
+        replace((char *)layout.strName.c_str(), '/', '\\');
 #endif
+        //copy
+        strcpy(strTmpBuf, layout.strName.c_str());
+        strcpy(fileNameBuf, layout.strName.c_str());
+        //legecy
+        strcpy(location, installpath.c_str());// %root -> /sobey/fics
         std::string strTemp = fileloc;
         transform(strTemp.begin(),strTemp.end(),strTemp.begin(), ::tolower);//to lower  need
         std::string::size_type pos = strTemp.find("%root");
         if( pos == std::string::npos)
         {
-//            strcpy(location,fileloc.c_str());
-            pwdFullPath = fileloc;
+            pwdFullPath = fileloc;//无%root dst :绝对路径
         }
         else
         {
@@ -1646,83 +1645,85 @@ int FiUpdateAssistant::svc()
                 char relativeBuf[128]={0};
                 strcpy(relativeBuf, &fileloc[strlen("%root")+1]);
                 RelativePCDir = relativeBuf;
-                pwdFullPath  += relativeBuf;
+                pwdFullPath  += relativeBuf;//dir
             }
         }
+        RelativePkgDir = dirname(strTmpBuf);
+        RelativePkgDir += "/";
+        len = fileloc.length();
+        fileName = basename(fileNameBuf);//maybe null 3 kinds: *.pdb no-files a.b
+#ifdef WIN32
+        replace((char *)pkgDir.c_str(), '/', '\\');
+        replace((char *)rootDir.c_str(), '/', '\\');
+        replace((char *)RelativePkgDir.c_str(), '/', '\\');
+        replace((char *)RelativePCDir.c_str(), '/', '\\');
+        replace((char *)pwdFullPath.c_str(), '/', '\\');
+        replace((char *)fileName.c_str(), '/', '\\');
+        if (fileloc[len-1] != '\\')
+        {
+            fileloc.push_back('\\');
+        }        
+#else
+        if (fileloc[len-1] != '/')
+        {
+            fileloc.push_back('/');
+        }
+#endif
+
         strcpy(strTmpBuf, layout.strName.c_str());
-//        strTemp      = layout.strName;
+//        正则匹配 *.sys 或 a.y
         if (strTmpBuf[strlen(strTmpBuf)-1] != '*')
         {
             pwdFullPath += basename(strTmpBuf);//dir:lib/*, *.sys, FiUpdateMgr
         }
         std::string cfullname = pkgDir;//server_v1.0.0_date_patchNo
-        char* p = strstr((char*)layout.strName.c_str(),"/*");//dir
+        char* p = NULL;
         bool isdir=false;
+#ifdef WIN32
+        p = strstr((char*)layout.strName.c_str(),"\\*");//dir
+#else
+        p = strstr((char*)layout.strName.c_str(),"/*");//dir
+#endif
         if(p)
         {
             isdir =true;
-//            *p =0;
         }
-//         if( (layout.strName.length()>=4) &&strcmp(&layout.strName[layout.strName.length()-4],".reg")==0 )//*.reg
-//         {
-//             std::string regfilename = rootpath+dirfilename+"\\";
-//             regfilename += layout.strName;
-//             FILE* rfp = fopen(regfilename.c_str(),"rb");
-//             wchar_t wbuf[256];
-//             bool b=false;
-//             while ( fgetws(wbuf,256,rfp)> 0)
-//             {
-//                 char buf[256];
-//                 wchar2char(wbuf,buf);
-//                 char *tmp1=NULL;
-//                 char* tmp2=NULL;
-//                 if( (tmp1=strstr(buf,"["))!= NULL && (tmp2=strstr(buf,"]"))!=NULL )//[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\difsFsd\config]
-//                 {
-//                     Reg_Layout_t rlt;
-//                     rlt.strName = layout.strName;
-//                     rlt.strAction ="A";
-//                     tmp1++;
-//                     while(tmp1 != tmp2)
-//                     {
-//                         rlt.strLocation.push_back(*tmp1);
-//                         tmp1++;
-//                     }
-//                     pack.allRegs.push_back(rlt);
-//                     ut_dbg("find reg file[%s] location[%s] total %d\n",rlt.strName.c_str(),rlt.strLocation.c_str(),pack.allRegs.size());
-//                     break;
-//                 }
-//             }
-//             continue;
-//         }
-        //strcat(location,layout.strName.c_str());//+file name
+
         if(layout.strAction == "M")
         {
 #ifdef WIN32
-            cfullname +=layout.strName.c_str();
             if(isdir)
             {
+                //mkdir 
                 sprintf(backcmd,"MD %sbackup\\%s \r\n", pkgDir.c_str(), RelativePkgDir.c_str());
                 FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             }
             //back 
+#if 0
             sprintf(backcmd,"%s \"%s%s\" %sbackup\\%s \r\n",(isdir)?"xcopy /E/H /Y ":"copy  /Y ", location,layout.strName.c_str(),
                 downfilefullname.c_str(),isdir?std::string(std::string(layout.strName.c_str())).c_str():"");
             FiWriteFile(fpinstall,backcmd,strlen(backcmd));
+#endif
             //FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             //FiWriteFile(fpinstall," \r\n",strlen(" \r\n"));
             //FiWriteFile(fpinstall,pause5,strlen(pause5));
             //install
-            sprintf(cmd,"%s \"%s%s\"  \"%s%s\" \r\n",(isdir)?"xcopy /E/H /Y ":"copy /Y ",downfilefullname.c_str(),layout.strName.c_str(),
-                location,std::string(std::string(layout.strName.c_str())).c_str());
+            sprintf(cmd,"%s %s\\%s%s %s%s \r\n",
+                   (isdir)?"xcopy /E/H /Y":"xcopy /Y ",
+                   pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(),
+                   rootDir.c_str(),
+                   RelativePCDir.c_str()
+               );
             FiWriteFile(fpinstall,cmd,strlen(cmd));
             //FiWriteFile(fpinstall,pause5,strlen(pause5));
             //recover
+#if 0
             sprintf(uncmd,"%s %s%s \r\n",(isdir)?"rd /s/q ":"del /s/q  ",location,layout.strName.c_str());
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
             sprintf(uncmd,"%s  %sbackup\\%s %s\r\n","move",downfilefullname.c_str(),layout.strName.c_str(),location);
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
+#endif
 #else
-            cfullname +=layout.strName.c_str();
             //install
             sprintf(cmd,"install -p -v -D -S .back %s/%s %s \n",
                     pkgDir.c_str(), layout.strName.c_str(), pwdFullPath.c_str());//pwdFullPath == *?
@@ -1739,38 +1740,32 @@ int FiUpdateAssistant::svc()
 //            sprintf(uncmd,"cp %s  %sbackup/%s %s\n",(isdir)?"-rf ":" -f ",downfilefullname.c_str(),layout.strName.c_str(),location);
 //            FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
 #endif
-            FilePair FP;
-            FP.file2 = std::string(location)+layout.strName.c_str();
-            FP.file1 = cfullname;
-            if(isdir)
-            {
-                FP.file1+="/*";//自定义标记
-                FP.file2+="/*";
-            }
-            vecChangedFiles.push_back( FP );//???
         }
         if(layout.strAction == "D")
         {
 #ifdef WIN32
-            cfullname += "backup\\";
-            cfullname +=layout.strName.c_str();
-            //back
-            sprintf(cmd,"%s  %s%s %sbackup \r\n","move" ,location,layout.strName.c_str(),downfilefullname.c_str());
+            //back up 不能删除目录，最好以正则匹配删除
+            sprintf(cmd,"MD %sbackup\\%s \r\n move  %s\\%s%s %s\\backup\\%s \r\n",
+                    pkgDir.c_str(), RelativePkgDir.c_str(),
+                    rootDir.c_str(), RelativePCDir.c_str(), fileName.c_str(),
+                    pkgDir.c_str(), RelativePkgDir.c_str());
             FiWriteFile(fpinstall,cmd,strlen(cmd));
-            FiWriteFile(fpinstall,cmd,strlen(cmd));
+#if 0
             if(isdir)
             {
                 sprintf(backcmd,"MD %s%s \r\n",location,layout.strName.c_str());
                 FiWriteFile(fpuninstall,backcmd,strlen(backcmd));
             }
+#endif
             //sprintf(backcmd,"%s  %s%s %sbackup\\ \r\n",(isdir)?"xcopy /E/H /Y ":"copy /Y ",location,layout.strName.c_str(),downfilefullname.c_str());
             //sprintf(cmd,"%s %s%s\r\n",(isdir)?"rd /S /Q ":" del /S /Q",location,layout.strName.c_str());
             //recover
-            sprintf(uncmd,"%s  %sbackup\\%s %s%s\r\n",(isdir)?"xcopy /E/H /Y ":"copy /Y ",downfilefullname.c_str(),layout.strName.c_str(),location,isdir?std::string(std::string(layout.strName.c_str())).c_str():"");
+            sprintf(uncmd,"%s  %s\\backup\\%s%s %s%s\r\n",
+                    (isdir)?"xcopy /E/H /Y ":"copy /Y ",
+                    pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(),
+                    rootDir.c_str(), RelativePCDir.c_str());
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
 #else
-            cfullname += "backup/";
-            cfullname +=layout.strName.c_str();
             //back up
             sprintf(backcmd,"mkdir -p %sbackup/%s; cp -a -rf %s %sbackup/%s\n",
                     pkgDir.c_str(), RelativePkgDir.c_str(), pwdFullPath.c_str(),
@@ -1785,14 +1780,6 @@ int FiUpdateAssistant::svc()
             FiWriteFile(fpinstall,cmd,strlen(cmd));
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
 #endif
-            FilePair FP;
-            FP.file2 = cfullname;
-            if (isdir)
-            {
-                FP.file2+="/*";
-            }
-            
-            vecChangedFiles.push_back( FP );
         }
         if( layout.strAction == "A")
         {
@@ -1800,14 +1787,22 @@ int FiUpdateAssistant::svc()
             //sprintf(backcmd,"move %s backup/\r\n",location);
             if(isdir)
             {
-                sprintf(cmd,"MD %s%s \r\n",location,layout.strName.c_str());
+                //mk dir
+                sprintf(cmd,"MD %sbackup\\%s \r\n", pkgDir.c_str(), RelativePkgDir.c_str());
                 FiWriteFile(fpinstall,cmd,strlen(cmd));
             }
             //install
-            sprintf(cmd,"%s %s%s %s%s\r\n",(isdir)?"xcopy /E/H /Y":"xcopy /Y ",downfilefullname.c_str(),layout.strName.c_str(),
-                location,isdir?std::string(std::string(layout.strName.c_str())+"\\").c_str():"");
+            sprintf(cmd,"%s %s\\%s%s %s%s\r\n",
+                    (isdir)?"xcopy /E/H /Y":"xcopy /Y ",
+                    pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(),
+                    rootDir.c_str(),
+                    RelativePCDir.c_str()
+                );
+#if 0
             //recover
-            sprintf(uncmd,"%s %s%s\r\n",(isdir)?"rd /S /Q":"del /S /Q ",location,layout.strName.c_str());
+            sprintf(uncmd,"%s %s%s\r\n",(isdir)?"rd /S /Q":"del /S /Q ",
+                    rootDir.c_str(), RelativePCDir.c_str());
+#endif
 #else
             // sprintf(backcmd,"mv %s backup/\n",location);
             sprintf(cmd,"mkdir -p %s\n", RelativePCDir.c_str());
@@ -1825,18 +1820,9 @@ int FiUpdateAssistant::svc()
                 sprintf(uncmd, "rm -rf %s\n", pwdFullPath.c_str());
             }
 #endif
-            FilePair FP;
-            FP.file1 = downfilefullname+layout.strName.c_str();
-            FP.file2 = std::string(location)+layout.strName.c_str();
-            if (isdir)
-            {
-                FP.file1+="/*";
-                FP.file2+="/*";
-            }
             //FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             FiWriteFile(fpinstall,cmd,strlen(cmd));
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
-            vecChangedFiles.push_back( FP );
         }
     }
     //rename 's/\.back$//' *.back
@@ -1975,83 +1961,6 @@ int FiUpdateAssistant::svc()
 
     ut_dbg("checking file-udpate\n");
     fflush(stdout);
-#if 0//add by sean
-    std::vector<FilePair>::iterator iterf;
-    for (iterf=vecChangedFiles.begin();iterf!=vecChangedFiles.end();++iterf)//
-    {
-        FilePair& FP = *iterf;
-        std::string filename = FP.file1.empty()?FP.file2:FP.file1;
-        char* p = strstr((char*)filename.c_str(),"/*");
-        bool isdir = false;
-        if( p != NULL)
-        {
-            isdir = true;
-            //*p=0;
-        }
-        if (FP.file1.empty() || FP.file2.empty())
-        {
-            ut_dbg("file1[%s]file2[%s]is null!\n", FP.file1.c_str(), FP.file2.c_str());
-            
-            if( isdir )
-            {
-                *p=0;
-                if(ACCESS(filename.c_str(),0)==- 1)//不存在
-                {
-                    ut_err("update file fail,fail to move file.check auth! filename[%s]\n",filename.c_str());
-                    fflush(stdout);
-                    //int *i =0;
-                    //*i =0;
-                    NOTIFY_UPDATELAOAD_FINISH_FAIL();
-                    return -1;
-                }
-            }
-            else
-            {
-                FILEPTR tfp = FiOpenExistFile(filename.c_str());
-                if(tfp ==NULL)
-                {
-                    ut_dbg("update file fail,fail to move file.check auth! filename[%s]\n ",filename.c_str());
-                    fflush(stdout);
-                    //int *i =0;
-                    //*i =0;
-                    NOTIFY_UPDATELAOAD_FINISH_FAIL();
-                    return -1;
-                }
-                FiCloseFile(tfp);
-            }
-            
-        }
-        else
-        {
-            //ut_dbg("check file1 %s,file2%s \n",FP.file2.c_str(),FP.file1.c_str());
-            if(isdir)
-            {
-                char*p1 = strstr((char*)FP.file2.c_str(),"/*");
-                char*p2=strstr((char*)FP.file1.c_str(),"/*");
-                p1++;
-                p2++;
-                *p1=0;
-                *p2=0;
-                bool ret =checkfolder(FP.file1.c_str(),FP.file2.c_str());
-                if(!ret)
-                {
-                    NOTIFY_UPDATELAOAD_FINISH_FAIL();
-                    return -45;
-                }
-            }
-            else if(ACCESS(FP.file2.c_str(), 0) == 0 && !CheckFile_Md5(FP.file1,FP.file2) )
-            {
-                ut_dbg("update file fail,fail to move file.check auth!\n ");
-                fflush(stdout);
-                //int *i =0;
-                //*i =0;
-                NOTIFY_UPDATELAOAD_FINISH_FAIL();
-                return -45;
-            }
-        }
-
-    }
-#endif
     if(!pack.allRegs.empty())
     {
         ut_dbg("checking reg-update\n");
@@ -2362,6 +2271,8 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
     else
     {
         record2History(allfolders[j].c_str());
+        memset(&curVer, 0, sizeof(version_t));
+        getVerFromName(allfolders[j].c_str(), &curVer);            
         writeLocalVer(&curVer);
     }
 

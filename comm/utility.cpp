@@ -330,7 +330,7 @@ int writeLocalVer(version_t *ver)
             ver->reserved.hash);
 
 #ifdef WIN32
-    fp = fopen("../patch_version.tmp", "wb+");
+    fp = fopen("..\\patch_version.tmp", "wb+");
 #else
     fp = fopen("/sobey/fics/patch_version.tmp", "wb+");
 #endif
@@ -342,7 +342,7 @@ int writeLocalVer(version_t *ver)
     fputs(patchVerBuf, fp);
     fclose(fp);
 #ifdef WIN32    
-    sprintf(cmdBuf, "copy ../patch_version.tmp %s -f", _PATH_VERSION);
+    sprintf(cmdBuf, "copy ..\\patch_version.tmp %s -f", _PATH_VERSION);
 #else
     sprintf(cmdBuf, "mv /sobey/fics/patch_version.tmp %s -f", _PATH_VERSION);
 #endif
@@ -402,7 +402,7 @@ int compareVersion(version_t *local, version_t *net)
         newDateYear,newDateMoth,newDateDay,newerpatchno,newerHash.c_str());
     fflush(stdout);
     ret = (localFirstVer*10000+localSecondVer*100+localLastVer) - (newFirstVer*10000+newSecondVer*100+newLastVer);
- /* :TODO:2015/10/21 15:58:00:hwt:  忽略时间只比较版本号和补丁号,已经hash值*/
+ /* :TODO:2015/10/21 15:58:00:hwt:  忽略时间只比较版本号和补丁号,已经hash值 */
 #if 0
     if (ret == 0)
     {
@@ -1075,8 +1075,24 @@ char *get_commonlog_time(void)
     return p;                   /* should be same as returning buf */
 }
 
-
 #ifdef WIN32
+int replace(char *path, int c, int d)
+{
+    char *pos = path;
+    if (!pos)
+    {
+        return -1;
+    }
+    while(*pos)
+    {
+        if (*pos == c)
+        {
+            *pos = d;
+        }
+        pos++;
+    }
+    return 0;
+}
 char *do_dirname(char *path) /*c:\sobey\fics\update/ */
 {
     char *src = path;
@@ -1088,17 +1104,21 @@ char *do_dirname(char *path) /*c:\sobey\fics\update/ */
     {
         return NULL;
     }
+    replace(src, '/', '\\');
     len = strlen(path);
-    while ((src[len-1] == '\\' || src[len-1] == '/') && len>0)
+    while ((src[len-1] == '\\') && len>0)
     {
         len--;
         src[len] = '\0';
     }
-    while (pos = strchr(pos, '\\'))
+    while ((pos = strchr(pos, '\\')))
     {
         lastPos = pos++;
     }
-    *lastPos = '\0';
+    if (lastPos)
+    {
+        *lastPos = '\0';
+    }
     return src;
 }
 char *do_basename(char *path)
@@ -1111,12 +1131,13 @@ char *do_basename(char *path)
     {
         return NULL;
     }
+    replace(src, '/', '\\');
     len = strlen(src);
 
-    while (src[--len]!='\\' && len >= 0){;}
+    while (src[len-1]!='\\'&& len > 0){len--;}
     if (len > 0)
     {
-        pos  = &src[len];
+        pos  = &src[len-1];
         *pos = '\0';
         pos++;
     }

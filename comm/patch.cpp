@@ -634,7 +634,7 @@ int getMD5FromLocal(const char *fileName, string &localMd5)
         return 0;
     }
 #ifdef WIN32
-    sprintf(cmdBuf, "md5sum -u %s", fileName);
+    sprintf(cmdBuf, "md5sums -u %s", fileName);
 #else
     sprintf(cmdBuf, "md5sum %s", fileName);
 #endif
@@ -697,6 +697,23 @@ int delEleMD52Cache(const char* filename, string &localMd5)
     }
     MD5Cache.erase(it);
     ut_dbg("md5 cache: del ele file:%s val:%s\n", filename, localMd5.c_str());
+
+    return 0;
+}
+int stripSpace(char *str)
+{
+    int len = 0;
+    if (!str)
+    {
+        ut_err("str is null\n");
+    }
+
+    len = strlen(str);
+    while (str[len-1] == ' ' && len > 0)
+    {
+        str[len-1] = '\0';
+        len--;
+    }
 
     return 0;
 }
