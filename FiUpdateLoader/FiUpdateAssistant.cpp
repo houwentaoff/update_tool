@@ -1701,7 +1701,7 @@ int FiUpdateAssistant::svc()
             //back 
 #if 1
             //for /f %%i in('dir /b win_client\64\*.sys') do (xcopy /Y rootDir\RelativePCDir\%%i pkgDir\backup\RelativePkgDir\ \r\n )
-            sprintf(backcmd, "for /f %%%%file in(\'dir /b %s%s\')do(xcopy /Y %s%s%%%%file %sbackup\\%s)\r\n",
+            sprintf(backcmd, "for /f %%%%i in (\'dir /b %s%s\') do ( xcopy /Y %s%s%%%%i %sbackup\\%s )\r\n",
                     RelativePkgDir.c_str(), fileName.c_str(), rootDir.c_str(),
                     RelativePCDir.c_str(), pkgDir.c_str(), RelativePkgDir.c_str());
             FiWriteFile(fpinstall, backcmd, strlen(backcmd));
@@ -1802,7 +1802,7 @@ int FiUpdateAssistant::svc()
                 );
 #if 1
             //recover
-            sprintf(uncmd, "for /f %%%%file in(\'dir /b %s%s\')do(del /s /q  %s%s%%%%file %sbackup\\%s)\r\n",
+            sprintf(uncmd, "for /f %%%%i in (\'dir /b %s%s\') do ( del /s /q  %s%s%%%%i %sbackup\\%s )\r\n",
                     RelativePkgDir.c_str(), fileName.c_str(), rootDir.c_str(),
                     RelativePCDir.c_str(), pkgDir.c_str(), RelativePkgDir.c_str());
 //            sprintf(uncmd,"%s %s%s\r\n",(isdir)?"rd /S /Q":"del /S /Q ",
