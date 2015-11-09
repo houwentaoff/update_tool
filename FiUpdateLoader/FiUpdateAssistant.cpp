@@ -1413,7 +1413,11 @@ int FiUpdateAssistant::svc()
     rootpath = buff;
     pkgDir  = rootDir;
     rootDir  = dirname(buff);
+#ifdef WIN32
+    rootDir += "\\";
+#else
     rootDir += "/";
+#endif
     pkgDir   = rootDir;
     pkgDir  += "update/";
     ut_dbg("FiUpdateAssistant:: root path %s \n",rootpath.c_str());
@@ -1433,11 +1437,12 @@ int FiUpdateAssistant::svc()
     std::string unpress;
     unpress += "\"";
     unpress +="\"";
-    unpress += buff;
+    unpress += rootDir;
+    unpress += "\\update\\";
     unpress +="7z.exe\"";
     unpress += " x ";
     unpress +="\"";
-    unpress +=buff+filename;
+    unpress +=rootDir+"\\update\\" + filename;
     unpress +="\"  ";
     unpress +="-o\"";
     unpress +=rootpath+"\"";
@@ -1448,11 +1453,12 @@ int FiUpdateAssistant::svc()
     *p = '\0';
     unpress = "\"";
     unpress +="\"";
-    unpress += buff;
+    unpress += rootDir;
+    unpress += "\\update\\";
     unpress +="7z.exe\"";
     unpress += " x ";
     unpress +="\"";
-    unpress +=buff+tmpfilename;
+    unpress +=rootDir+"\\update\\"+tmpfilename;
     unpress +="\"  ";
     unpress +="-o\"";
     unpress +=rootpath+"\"";
@@ -1461,7 +1467,7 @@ int FiUpdateAssistant::svc()
     //del tmpfilename *.tar
     std::string delStr = "del ";
     delStr  += "\"";
-    delStr  += buff+tmpfilename;
+    delStr  += rootDir+"\\update\\"+tmpfilename;
     delStr  += "\"";
     FiExecuteShell(delStr.c_str());
     //FiExeWinUncompress(unpress.c_str());
