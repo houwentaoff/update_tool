@@ -193,7 +193,7 @@ bool updateLocal(version_t *pver)
     for (kind = 0; kind < optinalname.size();kind++)
     {
         name = nameTmp + optinalname[kind];
-        sprintf(fullName, "%s%s", downPkgDir, name.c_str());
+        sprintf(fullName, "%s/%s", downPkgDir, name.c_str());
         if (FiIsExistFile(fullName))
         {
             exist = true;

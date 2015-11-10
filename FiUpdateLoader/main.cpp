@@ -139,7 +139,7 @@ int main(int argc, char **argv)
     CMarkup xmlmaker, xmlloader;
     
     FiGetCurDir(sizeof(pathConf),pathConf);
-    strcat(pathConf, "../config/network.xml");
+    strcat(pathConf, _PATH_CONF);
 
 	ut_dbg ("path2 %s\n", pathConf);
 
@@ -183,9 +183,9 @@ int main(int argc, char **argv)
 		}
     }
 #ifdef WIN32
-    if (!xmlmaker.Save(_T("../config/network.xml")))
+    if (!xmlmaker.Save(_T(_PATH_CONF)))
 #else
-    if (!xmlmaker.Save("../config/network.xml"))
+    if (!xmlmaker.Save(_PATH_CONF))
 #endif
     {
         ut_err("generate network.xml fail\n");

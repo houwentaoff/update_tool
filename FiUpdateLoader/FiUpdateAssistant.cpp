@@ -247,7 +247,7 @@ int FiUpdateAssistant::startup()
     FiGetCurDir(sizeof(buf),buf);
     std::string strWebDir =buf;
     std::string strNetConfig =buf;    
-    strNetConfig +="../config/network.xml";
+    strNetConfig +=_PATH_CONF;
 
     xmlParser.load(strNetConfig.c_str());
 #ifdef WIN32
@@ -304,15 +304,15 @@ bool FiUpdateAssistant::ConnectUpMgr()
     FiGetCurDir(sizeof(buf),buf);
     std::string strNetConfig =buf;
 #ifdef WIN32
-    strNetConfig +="..\\Config\\network.xml";//sean
+    strNetConfig +=_PATH_CONF;//sean
 #else
     if(which==CLIENT)
     {
-        strNetConfig +="../config/network.xml";
+        strNetConfig +=_PATH_CONF;
     }
     else
     {
-        strNetConfig +="../config/network.xml";
+        strNetConfig +=_PATH_CONF;
     }
 #endif
     xmlParser.load(strNetConfig.c_str());
@@ -906,7 +906,11 @@ int FiUpdateAssistant::QueryCurrentVersion(version_t *version)
     {
         ut_dbg("no package available\n");
         fflush(stdout);
-        NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
+ /* :TODO:2015/10/28 15:21:32:hwt:  当服务器返回异常的版本号(服务器的patch_version文件缺失)应该继续运行不能退出*/
+#if 0
+		//NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
+#endif
+/* :TODO:End---  */
         return 34;
     }
     strcpy(version->version, outversion);
@@ -1613,6 +1617,7 @@ int FiUpdateAssistant::svc()
     {
         File_Layout_t& layout = *it;
         std::string &fileloc = layout.strLocation;//libs/*  
+        pwdFullPath = rootDir;  
         char location[200]={0};
         char strTmpBuf[256] = {0};
         char fileNameBuf[256] = {0};
@@ -1802,7 +1807,7 @@ int FiUpdateAssistant::svc()
                 );
 #if 1
             //recover
-            sprintf(uncmd, "for /f %%%%i in (\'dir /b %s%s\') do ( del /s /q  %s%s%%%%i %sbackup\\%s )\r\n",
+            sprintf(uncmd, "for /f %%%%i in (\'dir /b %s%s\') do ( del  /q  %s%s%%%%i %sbackup\\%s )\r\n",
                     RelativePkgDir.c_str(), fileName.c_str(), rootDir.c_str(),
                     RelativePCDir.c_str(), pkgDir.c_str(), RelativePkgDir.c_str());
 //            sprintf(uncmd,"%s %s%s\r\n",(isdir)?"rd /S /Q":"del /S /Q ",

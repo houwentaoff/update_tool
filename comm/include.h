@@ -26,7 +26,9 @@
 #define HASH_LEN                200
 #ifdef WIN32
 #define _PATH_VERSION        "..\\patch_version"
+#define _PATH_CONF           "..\\config\\update_network.xml"
 #else
+#define _PATH_CONF           "../config/update_network.xml"
 #define _PATH_VERSION        "/sobey/fics/patch_version" /*默认路径*/           /*  */
 #endif
 #define _PATH_PKG_DL         "/sobey/fics/download/"   /*默认路径*/
