@@ -750,7 +750,7 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
     
     ret = svc();
     ut_dbg("install ret[%d]\n", ret);
-
+    chdir(rootDir);
     return 0;
 }
 int FiUpdateAssistant::getMD5FromRemote(const char *fileName, string &remoteMD5)
@@ -1406,7 +1406,7 @@ int FiUpdateAssistant::setFile(std::string name)
     dirfilename = std::string(name.c_str(), p-name.c_str());
     return 0;
 }
-int FiUpdateAssistant::svc()
+int FiUpdateAssistant::svc()//legecy
 {
     char buff[200];
     std::string rootpath;
@@ -1416,7 +1416,7 @@ int FiUpdateAssistant::svc()
     string RelativePCDir;//->  dirname: libs , client, mds    config, c:\windows\system32 
     string pwdFullPath;//rootDir + RelativePCDir + [FileName] 
     string fileName;// *.sys  *.pdb *.exe updateLoader.exe fiwatchdog
-    
+        
     FiGetCurDir(sizeof(buff),buff);
     rootpath = buff;
     pkgDir  = rootDir;
@@ -1603,6 +1603,7 @@ int FiUpdateAssistant::svc()
     char backcmd[300];
     char cmd[300];
     char uncmd[300];
+    char *dirnameTmp = NULL;
     string FileName;
     string srcPath;
     //pkgDir + layout.strName -> pkg file name
@@ -1641,6 +1642,7 @@ int FiUpdateAssistant::svc()
         if( pos == std::string::npos)
         {
             pwdFullPath = fileloc;//无%root dst :绝对路径
+            RelativePCDir = fileloc;
         }
         else
         {
@@ -1696,6 +1698,7 @@ int FiUpdateAssistant::svc()
 
         if(layout.strAction == "M")
         {
+            dirnameTmp = dirname((char *)pwdFullPath.c_str());
 #ifdef WIN32
             if(isdir)
             {
@@ -1706,43 +1709,41 @@ int FiUpdateAssistant::svc()
             //back 
 #if 1
             //for /f %%i in('dir /b win_client\64\*.sys') do (xcopy /Y rootDir\RelativePCDir\%%i pkgDir\backup\RelativePkgDir\ \r\n )
-            sprintf(backcmd, "for /f %%%%i in (\'dir /b %s%s\') do ( xcopy /Y %s%s%%%%i %sbackup\\%s )\r\n",
-                    RelativePkgDir.c_str(), fileName.c_str(), rootDir.c_str(),
-                    RelativePCDir.c_str(), pkgDir.c_str(), RelativePkgDir.c_str());
+            sprintf(backcmd, "for /f %%%%i in (\'dir /b %s%s%s\') do ( xcopy /Y %s\\%%%%i %sbackup\\%s )\r\n",
+                    pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(), dirnameTmp,
+                    pkgDir.c_str(), RelativePkgDir.c_str());
             FiWriteFile(fpinstall, backcmd, strlen(backcmd));
 #endif
             //FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             //FiWriteFile(fpinstall," \r\n",strlen(" \r\n"));
             //FiWriteFile(fpinstall,pause5,strlen(pause5));
             //install
-            sprintf(cmd,"%s %s\\%s%s %s%s \r\n",
+            sprintf(cmd,"%s %s\\%s%s %s \r\n",
                    (isdir)?"xcopy /E/H /Y":"xcopy /Y ",
                    pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(),
-                   rootDir.c_str(),
-                   RelativePCDir.c_str()
+                   dirnameTmp
                );
             FiWriteFile(fpinstall,cmd,strlen(cmd));
             //FiWriteFile(fpinstall,pause5,strlen(pause5));
             //recover
-#if 0
-            sprintf(uncmd,"%s %s%s \r\n",(isdir)?"rd /s/q ":"del /s/q  ",location,layout.strName.c_str());
+            sprintf(uncmd,"%s  %s\\backup\\%s%s %s\\\r\n",
+                    (isdir)?"xcopy /E/H /Y ":"copy /Y ",
+                    pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(),
+                    dirnameTmp);
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
-            sprintf(uncmd,"%s  %sbackup\\%s %s\r\n","move",downfilefullname.c_str(),layout.strName.c_str(),location);
-            FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
-#endif
 #else
             //install
             sprintf(cmd,"install -p -v -D -S .back %s/%s %s \n",
-                    pkgDir.c_str(), layout.strName.c_str(), pwdFullPath.c_str());//pwdFullPath == *?
+                    pkgDir.c_str(), layout.strName.c_str(), dirnameTmp);//pwdFullPath == *?
             FiWriteFile(fpinstall, cmd, strlen(cmd));
             //back up   attention : %s*.back
-            sprintf(backcmd, "mkdir -p %sbackup/%s; for f in `ls %s*.back`; do fname=`basename $f`; newf=${fname%%.*}; mv $f %sbackup/%s/${newf}; done;\n",
-                    pkgDir.c_str(), RelativePkgDir.c_str(), pwdFullPath.c_str(),
+            sprintf(backcmd, "mkdir -p %sbackup/%s; for f in `ls %s/*.back`; do fname=`basename $f`; newf=${fname%%.*}; mv $f %sbackup/%s/${newf}; done;\n",
+                    pkgDir.c_str(), RelativePkgDir.c_str(), dirnameTmp,
                     pkgDir.c_str(), RelativePkgDir.c_str());
             FiWriteFile(fpinstall, backcmd, strlen(backcmd));
             //recover
-            sprintf(uncmd, "install -p -v -D %s/backup/%s %s\n",
-                    pkgDir.c_str(), layout.strName.c_str(), pwdFullPath.c_str());
+            sprintf(uncmd, "install -p -v -D %s/backup/%s %s/\n",
+                    pkgDir.c_str(), layout.strName.c_str(), dirnameTmp);
             FiWriteFile(fpuninstall, uncmd, strlen(uncmd));
 //            sprintf(uncmd,"cp %s  %sbackup/%s %s\n",(isdir)?"-rf ":" -f ",downfilefullname.c_str(),layout.strName.c_str(),location);
 //            FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
@@ -1751,10 +1752,11 @@ int FiUpdateAssistant::svc()
         if(layout.strAction == "D")
         {
 #ifdef WIN32
+            dirnameTmp = dirname((char *)pwdFullPath.c_str());
             //back up 不能删除目录，最好以正则匹配删除
-            sprintf(cmd,"MD %sbackup\\%s \r\n move  %s\\%s%s %s\\backup\\%s \r\n",
+            sprintf(cmd,"MD %sbackup\\%s \r\n move /y %s\\%s %s\\backup\\%s \r\n",
                     pkgDir.c_str(), RelativePkgDir.c_str(),
-                    rootDir.c_str(), RelativePCDir.c_str(), fileName.c_str(),
+                    dirnameTmp, fileName.c_str(),
                     pkgDir.c_str(), RelativePkgDir.c_str());
             FiWriteFile(fpinstall,cmd,strlen(cmd));
 #if 0
@@ -1767,10 +1769,10 @@ int FiUpdateAssistant::svc()
             //sprintf(backcmd,"%s  %s%s %sbackup\\ \r\n",(isdir)?"xcopy /E/H /Y ":"copy /Y ",location,layout.strName.c_str(),downfilefullname.c_str());
             //sprintf(cmd,"%s %s%s\r\n",(isdir)?"rd /S /Q ":" del /S /Q",location,layout.strName.c_str());
             //recover
-            sprintf(uncmd,"%s  %s\\backup\\%s%s %s%s\r\n",
+            sprintf(uncmd,"%s  %s\\backup\\%s%s %s\\\r\n",
                     (isdir)?"xcopy /E/H /Y ":"copy /Y ",
                     pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(),
-                    rootDir.c_str(), RelativePCDir.c_str());
+                    dirnameTmp);
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
 #else
             //back up
@@ -1781,8 +1783,8 @@ int FiUpdateAssistant::svc()
             sprintf(cmd,"rm %s -rf \n",
                     pwdFullPath.c_str());
             //recover
-            sprintf(uncmd,"install -p -v -D  %sbackup/%s %s\n",
-                    pkgDir.c_str(), layout.strName.c_str(), pwdFullPath.c_str());
+            sprintf(uncmd,"install -p -v -D  %sbackup/%s %s/\n",
+                    pkgDir.c_str(), layout.strName.c_str(), dirname(pwdFullPath.c_str()));
             FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             FiWriteFile(fpinstall,cmd,strlen(cmd));
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
@@ -1790,6 +1792,7 @@ int FiUpdateAssistant::svc()
         }
         if( layout.strAction == "A")
         {
+            dirnameTmp = dirname((char *)pwdFullPath.c_str());
 #ifdef WIN32
             //sprintf(backcmd,"move %s backup/\r\n",location);
             if(isdir)
@@ -1799,17 +1802,15 @@ int FiUpdateAssistant::svc()
                 FiWriteFile(fpinstall,cmd,strlen(cmd));
             }
             //install
-            sprintf(cmd,"%s %s\\%s%s %s%s\r\n",
+            sprintf(cmd,"%s %s\\%s%s %s\\\r\n",
                     (isdir)?"xcopy /E/H /Y":"xcopy /Y ",
                     pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(),
-                    rootDir.c_str(),
-                    RelativePCDir.c_str()
+                    dirnameTmp
                 );
 #if 1
             //recover
-            sprintf(uncmd, "for /f %%%%i in (\'dir /b %s%s\') do ( del  /q  %s%s%%%%i %sbackup\\%s )\r\n",
-                    RelativePkgDir.c_str(), fileName.c_str(), rootDir.c_str(),
-                    RelativePCDir.c_str(), pkgDir.c_str(), RelativePkgDir.c_str());
+            sprintf(uncmd, "for /f %%%%i in (\'dir /b %s%s%s\') do ( del  /q  %s\\%%%%i )\r\n",
+                    pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(), dirnameTmp);
 //            sprintf(uncmd,"%s %s%s\r\n",(isdir)?"rd /S /Q":"del /S /Q ",
 //                    rootDir.c_str(), RelativePCDir.c_str());
 #endif
@@ -1817,8 +1818,8 @@ int FiUpdateAssistant::svc()
             // sprintf(backcmd,"mv %s backup/\n",location);
             sprintf(cmd,"mkdir -p %s\n", RelativePCDir.c_str());
             //install
-            sprintf(cmd+strlen(cmd),"install -p -v  %s/%s %s\n",
-                    pkgDir.c_str(), layout.strName.c_str(), pwdFullPath.c_str());
+            sprintf(cmd+strlen(cmd),"install -p -v  %s/%s %s/\n",
+                    pkgDir.c_str(), layout.strName.c_str(), dirnameTmp);
             //recover
             if (isdir)//dir
             {
@@ -1827,7 +1828,7 @@ int FiUpdateAssistant::svc()
             }
             else
             {
-                sprintf(uncmd, "rm -rf %s\n", pwdFullPath.c_str());
+                sprintf(uncmd, "rm -rf %s/%s\n", dirnameTmp, fileName.c_str());
             }
 #endif
             //FiWriteFile(fpinstall,backcmd,strlen(backcmd));
@@ -1951,7 +1952,7 @@ int FiUpdateAssistant::svc()
 
 #ifdef WIN32
     sprintf(cmd,"copy /Y %s%s %sbackup\\ \r\n",installpath.c_str(),"patch_version",downfilefullname.c_str());
-    sprintf(backcmd,"del /s/q %s%s\r\n",installpath.c_str(),"patch_version");
+    sprintf(backcmd,"del /q %s%s\r\n",installpath.c_str(),"patch_version");
     sprintf(uncmd,"copy /Y %sbackup\\%s %s \r\n",downfilefullname.c_str(),"patch_version",installpath.c_str());
 #else
     sprintf(cmd,"cp -f %s%s %sbackup/ \n",installpath.c_str(),"patch_version",downfilefullname.c_str());//back patch_version

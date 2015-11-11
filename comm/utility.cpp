@@ -342,7 +342,7 @@ int writeLocalVer(version_t *ver)
     fputs(patchVerBuf, fp);
     fclose(fp);
 #ifdef WIN32    
-    sprintf(cmdBuf, "copy ..\\patch_version.tmp %s -f", _PATH_VERSION);
+    sprintf(cmdBuf, "move /y ..\\patch_version.tmp %s ", _PATH_VERSION);
 #else
     sprintf(cmdBuf, "mv /sobey/fics/patch_version.tmp %s -f", _PATH_VERSION);
 #endif

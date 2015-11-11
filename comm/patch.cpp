@@ -227,7 +227,7 @@ int downLossPatch(version_t *netVer, patchSet_t lossPatchs)
 
 //    sprintf(srcFile, "/sobey/fics/download/fics_%s_", netVer->version);//正则 re
 //    sprintf(dstFile, "/sobey/fics/update/fics_%s_", netVer->version);//正则 re
-    for (i =0; i<=BASEINTERVAL; i++)
+    for (i =0; i<BASEINTERVAL; i++)
     {
         if (lossPatchs[i][0]!=0)
         {
@@ -253,8 +253,8 @@ int downLossPatch(version_t *netVer, patchSet_t lossPatchs)
     }
     i = 0;
     //check patch
-    while (!lossPatchs[i++][0] && i<=BASEINTERVAL){};
-    if (i <= BASEINTERVAL)
+    while (!lossPatchs[i++][0] && i<BASEINTERVAL){};
+    if (i < BASEINTERVAL)
     {
         ret = -2;
         ut_err("patch:%d is not be downed.\n", i);
