@@ -195,7 +195,20 @@ int load_conf(char const *conf, vector<patchEle_t> &list)
             *del = '\0';
             del  = NULL;
         }
+        stripSpace(buf);
         strcpy(eleTmp.dst_name, buf);
+        if (eleTmp.dst_name[strlen(eleTmp.dst_name)-1] != '/' &&
+            eleTmp.dst_name[strlen(eleTmp.dst_name)-1] != '\\')
+        {
+            if (upparams.pf_type == LINUX)
+            {
+                strcat(eleTmp.dst_name, "/");
+            }
+            else if (upparams.pf_type == WINDOWS)
+            {
+                strcat(eleTmp.dst_name, "\\");
+            }
+        }
         //insert to xml
         fgetc(fp);
         list.push_back(eleTmp);

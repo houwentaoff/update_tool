@@ -1074,6 +1074,23 @@ char *get_commonlog_time(void)
     *p = '[';
     return p;                   /* should be same as returning buf */
 }
+int stripSpace(char *str)
+{
+    int len = 0;
+    if (!str)
+    {
+        ut_err("str is null\n");
+    }
+
+    len = strlen(str);
+    while (str[len-1] == ' ' && len > 0)
+    {
+        str[len-1] = '\0';
+        len--;
+    }
+
+    return 0;
+}
 
 #ifdef WIN32
 int replace(char *path, int c, int d)

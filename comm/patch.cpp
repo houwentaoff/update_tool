@@ -740,20 +740,3 @@ int delEleMD52Cache(const char* filename, string &localMd5)
 
     return 0;
 }
-int stripSpace(char *str)
-{
-    int len = 0;
-    if (!str)
-    {
-        ut_err("str is null\n");
-    }
-
-    len = strlen(str);
-    while (str[len-1] == ' ' && len > 0)
-    {
-        str[len-1] = '\0';
-        len--;
-    }
-
-    return 0;
-}

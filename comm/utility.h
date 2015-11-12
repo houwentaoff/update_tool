@@ -29,6 +29,14 @@ char *do_basename(char *path);
 #else
 #endif
 /**
+ * @brief 去掉字符串结尾的空格 
+ *
+ * @param str
+ *
+ * @return 
+ */
+int stripSpace(char *str);
+/**
  *  @brief: Returns the current time in common log format in a static
  * char buffer.
  *

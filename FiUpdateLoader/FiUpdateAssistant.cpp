@@ -1712,16 +1712,13 @@ int FiUpdateAssistant::svc()//legecy
         {
             dirnameTmp = dirname((char *)pwdFullPath.c_str());
 #ifdef WIN32
-            if(isdir)
-            {
-                //mkdir 
-                sprintf(backcmd,"MD %sbackup\\%s \r\n", pkgDir.c_str(), RelativePkgDir.c_str());
-                FiWriteFile(fpinstall,backcmd,strlen(backcmd));
-            }
+            //mkdir 
+            sprintf(backcmd,"MD %sbackup\\%s \r\n", pkgDir.c_str(), RelativePkgDir.c_str());
+            FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             //back 
 #if 1
             //for /f %%i in('dir /b win_client\64\*.sys') do (xcopy /Y rootDir\RelativePCDir\%%i pkgDir\backup\RelativePkgDir\ \r\n )
-            sprintf(backcmd, "for /f %%%%i in (\'dir /b %s%s%s\') do ( xcopy /Y %s\\%%%%i %sbackup\\%s )\r\n",
+            sprintf(backcmd, "for /f %%%%i in (\'dir /b %s%s%s\') do ( move /Y %s\\%%%%i %sbackup\\%s )\r\n",
                     pkgDir.c_str(), RelativePkgDir.c_str(), fileName.c_str(), dirnameTmp,
                     pkgDir.c_str(), RelativePkgDir.c_str());
             FiWriteFile(fpinstall, backcmd, strlen(backcmd));
@@ -1806,13 +1803,6 @@ int FiUpdateAssistant::svc()//legecy
         {
             dirnameTmp = dirname((char *)pwdFullPath.c_str());
 #ifdef WIN32
-            //sprintf(backcmd,"move %s backup/\r\n",location);
-            if(isdir)
-            {
-                //mk dir
-                sprintf(cmd,"MD %sbackup\\%s \r\n", pkgDir.c_str(), RelativePkgDir.c_str());
-                FiWriteFile(fpinstall,cmd,strlen(cmd));
-            }
             //install
             sprintf(cmd,"%s %s\\%s%s %s\\\r\n",
                     (isdir)?"xcopy /E/H /Y":"xcopy /Y ",
