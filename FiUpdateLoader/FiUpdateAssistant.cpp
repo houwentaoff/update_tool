@@ -688,6 +688,18 @@ int FiUpdateAssistant::installOldPkg(const char *fileName)
      *  2. 备份:已经升级过，则从高版本中的备份目录中copy
      *          没有升级过，则直接备份
      *-----------------------------------------------------------------------------*/
+#if 0
+    //1. 根据update.xml中的文件进行遍历
+    for ()
+    {
+        if (!shouldInstall(version_t *oldVer, file))
+        {
+            continue;
+        }
+        installFile(version_t *oldVer, file);
+    }
+    //
+#endif
     return 0;
 }
 /**
