@@ -740,3 +740,26 @@ int delEleMD52Cache(const char* filename, string &localMd5)
 
     return 0;
 }
+bool unzip(const char* src, const char *dst)
+{
+    char cmdBuf[512];
+    int suffixPos = strlen(".zip");
+    int len = 0;
+
+    if (!src || !dst)
+    {
+        ut_err("src dst is null\n");
+        goto err;
+    }
+    len = strlen(src);
+    if (strcmp(&src[len-suffixPos], ".zip")!=0)
+    {
+        ut_err("this is not a zip file.\n");
+        goto err;
+    }
+    sprintf(cmdBuf, "unzip -o %s -d %s", src, dst);
+    system(cmdBUf);
+    return true;
+err:
+    return false;
+}

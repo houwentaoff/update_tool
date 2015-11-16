@@ -98,6 +98,61 @@ bool operator<(const Pkg_t& lhs, const Pkg_t& rhs)
         return lhs.pkgName<rhs.pkgName;
 }
 #endif
+int command(const char *cmd, vector<string> &content)
+{
+    FILE *fp = NULL;
+    char tmppath[256]={0};
+
+    if (NULL ==(fp = popen(cmd, "r")))
+    {
+        ut_err("popen fail\n");
+        goto err;
+    }//加一个判断错误的 mark
+    while (fscanf(fp, "%[^\n]s", tmppath) == 1)
+    {
+        fgetc(fp);
+        pkgList.push_back(tmppath);
+    }
+    pclose(fp);
+    return 0;
+err:
+    return -1;
+}
+/**
+ * @brief 将包中的文件填入ｓｅｔ　ｐkg_t中
+ *         tar -tf a.tar.gz
+ * @param path
+ * @param pkg
+ *
+ * @return 
+ */
+int praseTargz(const char *path, Pkg_t &pkg)
+{
+    char  cmdBuf[256]={0};
+    char dirTmp[256]={0};
+    set<string> fileList;//file -> fileList
+
+    if (!path)
+    {
+        ut_err("path is null\n");
+        goto err;
+    }
+    strcpy(dirTmp, path);
+    dirname(dirTmp);
+    basename(dirTmp);
+    sprintf(cmdBuf, "tar -tf %s", path);
+    command(cmdBuf, fileList);
+    for_each(fileList.begin(), fileList.end(), );//将vector中的string全部插入集合set中。
+    pkg.pkgName = dirTmp;
+    return 0;
+err:
+    return -1;
+}
+int string2set(const string &s, )
+{
+    s
+    return 0;
+}
 /*-----------------------------------------------------------------------------
  *  1. 重定义masFileSet集合的并操作
  *       pkgName大的则合并:以大的进行合并，合并的时候舍弃小的。
@@ -116,6 +171,17 @@ int main ( int argc, char *argv[] )
      *  1. list all tar.gz file  -> //uncompress all pkg
      *  2. set_union(List_A.begin(), List_A.end(), List_B.begin(), List_B.end(), List_C.begin());
      *-----------------------------------------------------------------------------*/
+    vector<string> zipList;
+    if (getPkgList("./", "fics", ".zip", "v1.0.0", zipList) < 0)
+    {
+        ut_err("get pkg list fail\n");
+    }
+    //unzip zip
+    vector<string>::iterator it;
+    for (it = zipList.begin(); it<zipList.size();it++)
+    {
+        unzip(it->c_str(), "./");
+    }
     set<string> tmp1;
     set<string> tmp2;
     set<string> tmp3;
@@ -144,16 +210,24 @@ int main ( int argc, char *argv[] )
     tmp3.insert("libs/dee.so");
 
     /*-----------------------------------------------------------------------------
-     *  
+     *  1.server_......tar.gz
      *-----------------------------------------------------------------------------*/
 //    vector<Pkg_t> pkgList;
     Pkg_t pkg;
     vector<string> pathList;
+    if (getPkgList("./", "server_", ".tar.gz", pathList) < 0)
+    {
+        ut_err("get tar.gz fail.\n");
+        goto err;
+    }
     for (i = 0; i<pathList.size(); i++)
     {
         pkg.clear();
-        praseTargz(pathList[i], pkg);//write -> pkg
-        serFileSet.insert(pkg);
+        praseTargz(pathList[i].c_str(), pkg);//write -> pkg
+        if (!pkg.empty())
+        {
+            serFileSet.insert(pkg);
+        }
 //        pkgList.push_back(pkg);
     }
 
