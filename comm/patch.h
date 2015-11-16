@@ -26,9 +26,9 @@
 
 #define      BASEINTERVAL       100/* 补丁号间隔为100 则为base全版本 */
 #ifndef WIN32
-#define HISTORY        "/sobey/fics/history"            /*  */
+#define HISTORY        "/sobey/fics/.fics_history"            /*  */
 #else
-#define HISTORY        "../history"            /*  */
+#define HISTORY        "../.fics_history"            /*  */
 #endif
 
 using namespace std;
@@ -295,5 +295,13 @@ int addEleMD52Cache(const char* filename, string &localMd5);
  * @return 
  */
 int delEleMD52Cache(const char* filename, string &localMd5);
-
+/**
+ * @brief 解压zip文件到dst目录
+ *
+ * @param src
+ * @param dst
+ *
+ * @return 
+ */
+bool unzip(const char* src, const char *dst);
 #endif

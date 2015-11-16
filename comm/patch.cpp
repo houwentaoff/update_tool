@@ -758,7 +758,7 @@ bool unzip(const char* src, const char *dst)
         goto err;
     }
     sprintf(cmdBuf, "unzip -o %s -d %s", src, dst);
-    system(cmdBUf);
+    system(cmdBuf);
     return true;
 err:
     return false;
