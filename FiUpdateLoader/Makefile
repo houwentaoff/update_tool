@@ -25,12 +25,12 @@ CFG_LIB=-Wl,-Bdynamic -lpthread -lrt -ldl -Wl,-Bstatic -lomniORB4 \
 	-lomnithread -lomniDynamic4 -Wl,-Bdynamic
 CFG_OBJ=
 COMMON_OBJ=$(OUTDIR)/Markup_linux.o $(OUTDIR)/Md5.o \
-	$(OUTDIR)/utility.o $(OUTDIR)/patch.o $(OUTDIR)/QueryUpdateSK.o \
+	$(OUTDIR)/utility.o $(OUTDIR)/patch.o $(OUTDIR)/pkg.o $(OUTDIR)/QueryUpdateSK.o \
 	$(OUTDIR)/FiUpdateAssistant.o $(OUTDIR)/main.o \
 	$(OUTDIR)/SAXParserHandler.o 
 OBJ=$(COMMON_OBJ) $(CFG_OBJ)
 ALL_OBJ=$(OUTDIR)/Markup_linux.o $(OUTDIR)/Md5.o $(OUTDIR)/utility.o \
-	$(OUTDIR)/QueryUpdateSK.o $(OUTDIR)/patch.o $(OUTDIR)/FiUpdateAssistant.o \
+	$(OUTDIR)/QueryUpdateSK.o $(OUTDIR)/patch.o $(OUTDIR)/pkg.o $(OUTDIR)/FiUpdateAssistant.o \
 	$(OUTDIR)/main.o $(OUTDIR)/SAXParserHandler.o $(CFG_LIB)
 
 COMPILE=g++ -c  -x c++  -g -w -fpermissive -o "$(OUTDIR)/$(*F).o" $(CFG_INC) $<
@@ -88,12 +88,12 @@ CFG_LIB=-Wl,-Bdynamic -lpthread -lrt -ldl -Wl,-Bstatic -lomniORB4 \
 	-lomnithread -lomniDynamic4 -Wl,-Bdynamic
 CFG_OBJ=
 COMMON_OBJ=$(OUTDIR)/Markup_linux.o $(OUTDIR)/Md5.o \
-	$(OUTDIR)/utility.o $(OUTDIR)/patch.o $(OUTDIR)/QueryUpdateSK.o \
+	$(OUTDIR)/utility.o $(OUTDIR)/patch.o $(OUTDIR)/pkg.o $(OUTDIR)/QueryUpdateSK.o \
 	$(OUTDIR)/FiUpdateAssistant.o $(OUTDIR)/main.o \
 	$(OUTDIR)/SAXParserHandler.o 
 OBJ=$(COMMON_OBJ) $(CFG_OBJ)
 ALL_OBJ=$(OUTDIR)/Markup_linux.o $(OUTDIR)/Md5.o $(OUTDIR)/utility.o \
-	$(OUTDIR)/QueryUpdateSK.o $(OUTDIR)/patch.o $(OUTDIR)/FiUpdateAssistant.o \
+	$(OUTDIR)/QueryUpdateSK.o $(OUTDIR)/patch.o $(OUTDIR)/pkg.o  $(OUTDIR)/FiUpdateAssistant.o \
 	$(OUTDIR)/main.o $(OUTDIR)/SAXParserHandler.o $(CFG_LIB)
 
 COMPILE=g++ -c  -x c++  -w -fpermissive -o "$(OUTDIR)/$(*F).o" $(CFG_INC) $<

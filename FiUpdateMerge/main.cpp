@@ -27,6 +27,7 @@
 #include <libgen.h>
 #include <getopt.h>
 #include <unistd.h>
+#include "pkg.h"
 
 using namespace std;
 
@@ -53,6 +54,8 @@ static struct option long_options[] = {
     {"path", 1, NULL, 'p'}, 
     {"dest", 1, NULL, 'd'}, 
     {"prefix", 1, NULL, '~'}, 
+    {"date", 1, NULL, '!'}, 
+    {"patch", 1, NULL, '@'}, 
     {0, 0, 0, 0}    
 };
 static const char *short_options = "hv:b:e:p:d:~:";
@@ -64,11 +67,13 @@ static void print_usage(FILE *f, int exit_code)
     fprintf(f,
             "\t -h  --help         \n"
             "\t -v  --version       \n"
-            "\t -b  --begin       \n"
-            "\t -e  --end       \n"
+            "\t -b  --begin   begin patch num    \n"
+            "\t -e  --end     end patch num  \n"
+            "\t --prefix     default \"fics\".  \n"
+            "\t --patch      patch num of zip.  \n"
             "\t -p  --path  (patch path)       \n"
             "\t -d  --dest  (full version path)       \n"
-            "\t example:%s  --master \n",
+            "\t example:%s  --version 1.0.0 -b 4000 -e 4090 --patch 4100 -p ./ -d ./\n",
             program_name
             );
     exit(exit_code);
@@ -78,13 +83,13 @@ static int init_params(int argc, char **argv)
     int ch;
     int option_index = 0;
 
+    opterr = 0;
+    program_name = argv[0];
+
     if (argc < 2)
     {
         return -1;
     }
-
-    opterr = 0;
-    program_name = argv[0];
     while ((ch = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1) {
         switch (ch) {
         case 'h':
@@ -137,68 +142,6 @@ static int init_params(int argc, char **argv)
     return 0;
 }
 
-class Pkg_t
-{
-    public:
-        Pkg_t(){}
-        Pkg_t(string name, set<string> &path):pkgName(name), list(path){}
-        bool empty();
-        void clear();
-    public:
-        string pkgName;
-        set <string> list;
-};
-bool Pkg_t::empty()
-{
-    return list.empty();
-}
-void Pkg_t::clear()
-{
-    return list.clear();
-}
-class pkg_ele_t
-{
-    public:
-        pkg_ele_t(){};
-        pkg_ele_t(string name, string f):pkgName(name), file(f){}
-        bool operator==(const pkg_ele_t& ele) const
-        {
-            return (file==ele.file);
-        }
-        bool operator<(const pkg_ele_t& ele) const//只能小于不能大于否则集合编译不通过 find 函数需要这
-        {
-            return (file<ele.file);
-        }        
-        string pkgName;
-        string file;
-};
-/**
- * @brief 集合的并集运算
- *
- * @param list1
- * @param list2
- * @param ret
- *
- * @return 
- */
-static int set_union(const Pkg_t &pkg, set<pkg_ele_t> &ret)
-{
-    set<string>::iterator it;
-    pkg_ele_t pkg_ele;
-
-    for (it = pkg.list.begin(); it != pkg.list.end(); it++)
-    {
-        //exist: who is newer. newer -> ret
-        pkg_ele = pkg_ele_t(pkg.pkgName, *it);
-        if (ret.find(pkg_ele) != ret.end())
-        {
-//            cout<<"erase:"<<pkg.pkgName<<":"<<*it<<"!!!!!!!"<<endl;
-            ret.erase(pkg_ele);
-        }
-        ret.insert(pkg_ele);
-    }
-    return 0;
-}
 class myequal 
 {
     public:
@@ -228,6 +171,7 @@ int command(const char *cmd, vector<string> &content)
 {
     FILE *fp = NULL;
     char tmppath[256]={0};
+    int ret = -1;
 
     if (NULL ==(fp = popen(cmd, "r")))
     {
@@ -239,14 +183,54 @@ int command(const char *cmd, vector<string> &content)
         fgetc(fp);
         content.push_back(strchr(tmppath,'/'));//skip first dir
     }
-    pclose(fp);
+    ret = pclose(fp);
+    return ret;
+err:
+    return ret;
+}
+int setTarName(string &tarName, const char *date, const int patchNo)
+{
+    char buf[256] = {0};
+    char tarNameBuf[256] = {0};
+    char *prefix = NULL;
+    char *oldDate = NULL;
+    char *oldPatch = NULL;
+    char *oldVersion = NULL;
+    char *suffix = NULL;
+    
+    strcpy(buf, tarName.c_str());
+    prefix = buf;
+    oldVersion = strchr(buf, '_');
+    if (!oldVersion)
+    {
+        ut_err("set tar version\n");
+        goto err;
+    }
+    *oldVersion = '\0';
+    oldDate = strchr(oldVersion+1, '_');
+    if (!oldDate)
+    {
+        ut_err("set tar  date\n");
+        goto err;
+    }
+    oldPatch = strchr(oldDate+1, '_');
+    if (!oldPatch)
+    {
+        ut_err("set tar  patch\n");
+        goto err;
+    }
+    *oldPatch = '\0';
+    suffix = oldPatch+1;
+    sprintf(tarNameBuf, "%s_%s_%d_%s",
+        prefix, date, patchNo, suffix);
+    tarName = tarNameBuf;
     return 0;
 err:
     return -1;
 }
 
 /**
- * @brief 将包中的文件填入ｓｅｔ　ｐkg_t中
+ * @brief 将包中的文件填入set　ｐkg_t中
  *         tar -tf a.tar.gz
  * @param path
  * @param pkg
@@ -259,30 +243,82 @@ int praseTargz(const char *path, Pkg_t &pkg)
     char tmp[256]={0};
     char fileName[256]={0};
     char dirName[256]={0};
+    int  ret = -1;
     vector<string> fileList;//file -> fileList
 
     if (!path)
     {
         ut_err("path is null\n");
+        ret = -1;
         goto err;
     }
     strcpy(tmp, path);
     sprintf(fileName, "%s", basename(tmp));
     sprintf(dirName, "%s", dirname(tmp));
     sprintf(cmdBuf, "cd %s", dirName);
-    chdir(dirName);
-    sprintf(cmdBuf, "tar -tf %s", fileName);
-    command(cmdBuf, fileList);
-    chdir("../");
-    pkg.list.insert(fileList.begin(), fileList.end());//将vector中的string全部插入集合set中。
-    pkg.pkgName = dirName;
-    return 0;
+    ret = chdir(dirName);
+    if (0 == ret)
+    {
+        sprintf(cmdBuf, "tar -tf %s", fileName);
+        if (command(cmdBuf, fileList)!=0);
+        {
+            ret = -1;
+        }
+        chdir("../");
+        pkg.list.insert(fileList.begin(), fileList.end());//将vector中的string全部插入集合set中。
+        pkg.pkgName = dirName;
+        pkg.tarName = fileName;
+    }
+    return ret;
 err:
-    return -1;
+    return ret;
 }
-int cpFileFromTar2Dst(const char *file, const char *dst)
+/**
+ * @brief //tar -zxvf ./fics_v1.0.0_2015.11.18_4040/client_v1.0.0_2015.11.16_4000_64_Linux2.6.tar.gz -C dst client_v1.0.0_2015.11.16_4000_64_Linux2.6/update/A --strip-components 1
+ *          将ele->file 从./ele->pkgName/ele->tarName 解压到dst目录下的tarName中
+ *
+ * @param ele
+ * @param dst
+ * @param tarName
+ *
+ * @return 
+ */
+int cpFileFromTar2Dst(const pkg_ele_t &ele, const char *dst, const char *tarName)
 {
+    char cmdBuf[256]={0};
+    char srcDirTmp[256]={0};
+    char dstDirTmp[256]={0};
+    const char *stripParam = "--strip-components 1";
+    char *p = NULL;
+    int ret = -1;
 
+    strcpy(srcDirTmp, ele.tarName.c_str());
+    strcpy(dstDirTmp, tarName);
+    //strip suffix
+    p = strstr(srcDirTmp, ".tar.gz");
+    if(!p)
+    {
+        ut_err("cpFileFromTar2Dst err.\n");
+        return -1;
+    }
+    *p = '\0';
+    p = NULL;
+    p = strstr(dstDirTmp, ".tar.gz");
+    if(!p)
+    {
+        ut_err("cpFileFromTar2Dst err.\n");
+        return -1;
+    }
+    *p = '\0';    
+
+    sprintf(cmdBuf, "tar -zxvf %s/%s -C %s/%s %s%s   %s",
+            ele.pkgName.c_str(), ele.tarName.c_str(), dst, dstDirTmp, srcDirTmp, ele.file.c_str(), stripParam);
+    ret = system(cmdBuf);
+    if (ret!=0)
+    {
+        ret = -1;
+    }
+    return ret;
 }
 #if 0
 int string2set(const string &s, )
@@ -317,16 +353,26 @@ int main ( int argc, char *argv[] )
     Pkg_t pkg;
     vector<string> pathList;
     set<pkg_ele_t> ret;
+    set<pkg_ele_t>::iterator eleIt;
     set<Pkg_t, myequal>::iterator it;
     vector<string>::iterator itr;
     version_t ver;
     string dirNameTmp;
     char buf[256]={0};
+    /*-----------------------------------------------------------------------------
+     *  1.server_......tar.gz
+     *-----------------------------------------------------------------------------*/
+    const char *kinds[]={"server", "client", "Massvr", NULL};
+    const char *bits[]={"32", "64", NULL};
+    const char *plantform[]={"Win", "Linux", NULL};
+    char suffix[256] = {0};
+    int i,j,k=0;
+    char cmdBuf[256] = {0};
 
     memset(&ver, 0, sizeof(version_t));
     memset(&merge_params, 0, sizeof(merge_params));
     merge_params.gen_patch  = 6000;
-    strcpy(&merge_params.date, "2015.12.12"); 
+    strcpy(merge_params.date, "2015.12.12"); 
     if (init_params(argc, argv)<0)
     {
         print_usage(stderr, 1);
@@ -337,7 +383,7 @@ int main ( int argc, char *argv[] )
         ut_err("get pkg list fail\n");
     }
     //unzip zip
-    for (itr = zipList.begin(); itr<zipList.end();itr++)
+    for (itr = zipList.begin(); itr<zipList.end();i++,itr++)
     {
         memset(&ver, 0, sizeof(version_t));
         getVerFromName(zipList[i].c_str(), &ver);
@@ -350,24 +396,16 @@ int main ( int argc, char *argv[] )
         }
     }
 
-    /*-----------------------------------------------------------------------------
-     *  1.server_......tar.gz
-     *-----------------------------------------------------------------------------*/
-    const char *kinds[]={"server", "client", "Massvr", NULL};
-    const char *bits[]={"32", "64", NULL};
-    const char *plantform[]={"Win", "Linux", NULL};
-    char suffix[256] = {0};
-    int i,j,k=0;
-    char cmdBuf[256] = {0};
+
 //    for (i=0; kinds[i]!=NULL; i++)
 //    {
 //    "server 64/32 linux2.6"
 //    "client 64/32 linux2.6/Win"
 //    "Massvr 64/32 linux2.6"
-    sprintf(cmdBuf, "%s_%s_%s_%s", merge_params.prefix, 
+    sprintf(cmdBuf, "%s_%s_%s_%d", merge_params.prefix, 
             merge_params.version, merge_params.date,
             merge_params.gen_patch);//fics_v1.0.0_date_5000
-    mkdir(cmdBuf);
+    mkdir(cmdBuf, 0777);
     for (k=0; kinds[k]!=NULL; k++)
     {
         for (i=0; bits[i]!=NULL; i++)
@@ -379,6 +417,10 @@ int main ( int argc, char *argv[] )
                 if (getPkgList(merge_params.patch_path, kinds[k], suffix, merge_params.version, pathList) < 0)
                 {
                     ut_err("get %s %s tar.gz fail.\n", kinds[k], suffix);
+                    continue;
+                }
+                if (pathList.empty())
+                {
                     continue;
                 }
                 sort(pathList.begin(), pathList.end());
@@ -406,15 +448,23 @@ int main ( int argc, char *argv[] )
                 //相邻集合求并集
                 for(it = serFileSet.begin(); it!=serFileSet.end(); it++)
                 {
-                    set_union(*it, ret);
+                    _set_union(*it, ret);
                 }
                 for_each(ret.begin(), ret.end(), printEle);
-
+                string tarName;
+                tarName = pathList[0];
+                setTarName(tarName, merge_params.date, merge_params.gen_patch);
+                system("mkdir -p ./tmp");
                 //mkdir tar gz
-                for(it = serFileSet.begin(); it!=serFileSet.end(); it++)
+                for(eleIt = ret.begin(); eleIt!=ret.end(); it++)
                 {
-                    cpFileFromTar2Dst("","");//tar -zvf *.tar.gz /etc/file
+                    if (cpFileFromTar2Dst(*eleIt, "./tmp", tarName.c_str()) < 0)//tar -zvf *.tar.gz /etc/file
+                    {
+                        ut_err("cpFileFromTar2Dst fail.\n");
+                        goto err;
+                    }
                 }                
+                //mv ./tmp tar.gz
                 //tar -zxvf .... -> .tar.gz
             }
         }
