@@ -44,6 +44,7 @@ static struct
     char dst[256];//产生全版本的位置
     char date[128];
     int gen_patch;
+    bool debug;
 }merge_params;
 static const char* program_name;
 static struct option long_options[] = {
@@ -56,9 +57,10 @@ static struct option long_options[] = {
     {"prefix", 1, NULL, '~'}, 
     {"date", 1, NULL, '!'}, 
     {"patch", 1, NULL, '@'}, 
+    {"debug", 0, NULL, '#'}, 
     {0, 0, 0, 0}    
 };
-static const char *short_options = "hv:b:e:p:d:~:";
+static const char *short_options = "hv:b:e:p:d:~:@:#";
 
 static void print_usage(FILE *f, int exit_code)
 {
@@ -73,6 +75,7 @@ static void print_usage(FILE *f, int exit_code)
             "\t --patch      patch num of zip.  \n"
             "\t -p  --path  (patch path)       \n"
             "\t -d  --dest  (full version path)       \n"
+            "\t --debug    (debug mode)       \n"
             "\t example:%s  --version 1.0.0 -b 4000 -e 4090 --patch 4100 -p ./ -d ./\n",
             program_name
             );
@@ -82,6 +85,8 @@ static int init_params(int argc, char **argv)
 {
     int ch;
     int option_index = 0;
+    time_t time;
+    struct tm *tp=NULL;
 
     opterr = 0;
     program_name = argv[0];
@@ -114,11 +119,31 @@ static int init_params(int argc, char **argv)
         case '~':
             strcpy(merge_params.prefix, optarg);
             break;
-
+        case '!':
+            strcpy(merge_params.date, optarg);
+            break;
+        case '@':
+            merge_params.gen_patch = atoi(optarg);
+            break;
+        case '#':
+            merge_params.debug = true;
+            break;
         default:
             return -1;
             break;            
         }
+    }
+    if (strlen(merge_params.date) == 0)
+    {
+        time(&time);
+        tp = gmtime(&tp);
+        if (!tp)
+        {
+            ut_err("get time err\n");
+            return -1;
+        }
+        sprintf(merge_params.date, "%s.%.2d.%.2d", (1900+tp->tm_year), (1+tp->tm_mon), tp->tm_mday);
+        ut_dbg("using default time %d.%d.%d", 1900+tp->tm_year, (1+tp->tm_mon), tp->tm_mday);
     }
     if (strlen(merge_params.dst) == 0)
     {
@@ -311,8 +336,9 @@ int cpFileFromTar2Dst(const pkg_ele_t &ele, const char *dst, const char *tarName
     }
     *p = '\0';    
 
-    sprintf(cmdBuf, "tar -zxvf %s/%s -C %s/%s %s%s   %s",
-            ele.pkgName.c_str(), ele.tarName.c_str(), dst, dstDirTmp, srcDirTmp, ele.file.c_str(), stripParam);
+    sprintf(cmdBuf, "mkdir -p %s/%s ;tar -zxvf %s/%s -C %s/%s %s%s   %s",
+            dst, dstDirTmp, ele.pkgName.c_str(), ele.tarName.c_str(),
+            dst, dstDirTmp, srcDirTmp, ele.file.c_str(), stripParam);
     ret = system(cmdBuf);
     if (ret!=0)
     {
@@ -349,7 +375,7 @@ int main ( int argc, char *argv[] )
     set<Pkg_t, myequal> masFileSet;
     set<Pkg_t, myequal> cliWinFileSet;
     set<Pkg_t, myequal> cliLinuxFileSet;
-    set<Pkg_t, myequal> serFileSet;
+    set<Pkg_t, myequal> pkgFileSet;
     Pkg_t pkg;
     vector<string> pathList;
     set<pkg_ele_t> ret;
@@ -434,7 +460,7 @@ int main ( int argc, char *argv[] )
                     dirNameTmp = buf;
                     pathList[i].insert(0, dirNameTmp);
                 }                
-                serFileSet.clear();
+                pkgFileSet.clear();
                 ret.clear();
                 for (int i = 0; i<pathList.size(); i++)
                 {
@@ -442,11 +468,11 @@ int main ( int argc, char *argv[] )
                     praseTargz(pathList[i].c_str(), pkg);//write -> pkg
                     if (!pkg.empty())
                     {
-                        serFileSet.insert(pkg);
+                        pkgFileSet.insert(pkg);
                     }
                 }                
                 //相邻集合求并集
-                for(it = serFileSet.begin(); it!=serFileSet.end(); it++)
+                for(it = pkgFileSet.begin(); it!=pkgFileSet.end(); it++)
                 {
                     _set_union(*it, ret);
                 }
@@ -464,51 +490,17 @@ int main ( int argc, char *argv[] )
                         goto err;
                     }
                 }                
-                //mv ./tmp tar.gz
-                //tar -zxvf .... -> .tar.gz
+                //auto generate xml
+                //tar -zcvf ./tmp/tarName -> ./tmp/tarName.tar.gz
+                //rm ./tmp/tarName
             }
         }
     }
-    //zip   --->.zip
-#if 0
-    if (getPkgList(merge_params.patch_path, kinds[i], ".tar.gz", merge_params.version, pathList) < 0)
-    {
-        ut_err("get tar.gz fail.\n");
-        goto err;
-    }
-    //pathList 要过滤 掉 client_linux2.6  client_win 这种  
-    sort(pathList.begin(), pathList.end());
-    //append dirname to pathList
-    for (int i=0; i<pathList.size(); i++)
-    {
-        memset(&ver, 0, sizeof(version_t));
-        getVerFromName(pathList[i].c_str(), &ver);
-        sprintf(buf, "%s%s_%s_%s_%s/", merge_params.patch_path, merge_params.prefix, ver.version, ver.date, ver.patchNo);
-        dirNameTmp = buf;
-        pathList[i].insert(0, dirNameTmp);
-    }
-    for (int i = 0; i<pathList.size(); i++)
-    {
-        pkg.clear();
-        praseTargz(pathList[i].c_str(), pkg);//write -> pkg
-        if (!pkg.empty())
-        {
-            serFileSet.insert(pkg);
-        }
-//        pkgList.push_back(pkg);
-    }
-    //相邻集合求并集
+    //mv ./tmp -> fics_v1.0.0_12.12_4002
+    //zip fics_v1.0.0_12.12_4002.zip
+    //rm fics_v1.0.0_12.12_4002
+    //tar -zxvf .... -> .tar.gz
 
-    for(it = serFileSet.begin(); it!=serFileSet.end(); it++)
-    {
-        set_union(*it, ret);
-    }
-    for(it = serFileSet.begin(); it!=serFileSet.end(); it++)
-    {
-        cpFileFromTar2Dst();
-    }
-#endif
-//    for_each(ret.begin(), ret.end(), printEle);
     return 0;
 err:
     return -1;

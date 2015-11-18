@@ -49,12 +49,25 @@ int _set_union(const Pkg_t &pkg, set<pkg_ele_t> &ret)
  *        差集的值表示要安装的文件
  *
  * @param pkg
- * @param ret
- *
+ * @param rSet
+ * @param pkgRet
+ * 
+ * @sa    _set_union
  * @return 
  */
-int _set_difference(const Pkg_t &pkg, set<pkg_ele_t> &rSet, vector<string> &ret)
+int _set_difference(const Pkg_t &pkg, const set<pkg_ele_t> &rSet, Pkg_t &pkgRet)
 {
+    set<string>::const_iterator it;
+    pkg_ele_t pkg_ele;
+    for (it = pkg.list.begin(); it!=pkg.list.end(); it++)
+    {
+        pkg_ele = pkg_ele_t(pkg.pkgName, *it, pkg.tarName);
+        if (rSet.find(pkg_ele) == rSet.end())
+        {
+            pkgRet.list.insert(pkg.file);
+        }
+    }
+    pkgRet.tarName = pkg.tarName;
     return 0;
 }
 bool Pkg_t::empty()
