@@ -64,7 +64,7 @@ int _set_difference(const Pkg_t &pkg, const set<pkg_ele_t> &rSet, Pkg_t &pkgRet)
         pkg_ele = pkg_ele_t(pkg.pkgName, *it, pkg.tarName);
         if (rSet.find(pkg_ele) == rSet.end())
         {
-            pkgRet.list.insert(pkg.file);
+            pkgRet.list.insert(*it);
         }
     }
     pkgRet.tarName = pkg.tarName;

@@ -33,7 +33,7 @@ using namespace std;
 
 #define DEFAULT_PREFIX              "fics"            /*  */
 #define DEFAULT_PATH            "./"/*  */
-
+#define FICS_TMP_PATH           "./fics_tmp/"
 static struct
 {
     char version[128];//no default
@@ -72,11 +72,13 @@ static void print_usage(FILE *f, int exit_code)
             "\t -b  --begin   begin patch num    \n"
             "\t -e  --end     end patch num  \n"
             "\t --prefix     default \"fics\".  \n"
-            "\t --patch      patch num of zip.  \n"
-            "\t -p  --path  (patch path)       \n"
-            "\t -d  --dest  (full version path)       \n"
+            "\t --patch      patch num of zip default(the base verion of(end patch num)+%d).  \n"
+            "\t --date      default (now) pkg time eg:2015.12.13.       \n"
+            "\t -p  --path  (patch path)       default:\"./\"\n"
+            "\t -d  --dest  (full version path) default:\"./\"      \n"
             "\t --debug    (debug mode)       \n"
-            "\t example:%s  --version 1.0.0 -b 4000 -e 4090 --patch 4100 -p ./ -d ./\n",
+            "\t example:%s  --version 1.0.0 -b 4000 -e 4090 --date 2015.11.19 --patch 4100 -p ./ -d ./\n",
+            BASEINTERVAL,
             program_name
             );
     exit(exit_code);
@@ -85,7 +87,7 @@ static int init_params(int argc, char **argv)
 {
     int ch;
     int option_index = 0;
-    time_t time;
+    time_t timeSt;
     struct tm *tp=NULL;
 
     opterr = 0;
@@ -135,15 +137,15 @@ static int init_params(int argc, char **argv)
     }
     if (strlen(merge_params.date) == 0)
     {
-        time(&time);
-        tp = gmtime(&tp);
+        time(&timeSt);
+        tp = gmtime(&timeSt);
         if (!tp)
         {
             ut_err("get time err\n");
             return -1;
         }
-        sprintf(merge_params.date, "%s.%.2d.%.2d", (1900+tp->tm_year), (1+tp->tm_mon), tp->tm_mday);
-        ut_dbg("using default time %d.%d.%d", 1900+tp->tm_year, (1+tp->tm_mon), tp->tm_mday);
+        sprintf(merge_params.date, "%d.%.2d.%.2d", (1900+tp->tm_year), (1+tp->tm_mon), tp->tm_mday);
+        ut_dbg("using default time %d.%.2d.%.2d\n", 1900+tp->tm_year, (1+tp->tm_mon), tp->tm_mday);
     }
     if (strlen(merge_params.dst) == 0)
     {
@@ -160,9 +162,14 @@ static int init_params(int argc, char **argv)
         strcpy(merge_params.patch_path, DEFAULT_PATH);
         ut_dbg("load default src path: %s\n", DEFAULT_PATH);
     }
-    if (merge_params.patch_end < 0 || merge_params.patch_begin < 0)
+    if (merge_params.patch_end <= 0 || merge_params.patch_begin <= 0)
     {
         return -1;
+    }
+    if (merge_params.gen_patch == 0)
+    {
+        merge_params.gen_patch = merge_params.patch_end+BASEINTERVAL - (merge_params.patch_end+BASEINTERVAL)%BASEINTERVAL;
+        ut_dbg("load default dst patch num : %d\n", merge_params.gen_patch);
     }
     return 0;
 }
@@ -245,6 +252,7 @@ int setTarName(string &tarName, const char *date, const int patchNo)
         goto err;
     }
     *oldPatch = '\0';
+    while (*(++oldPatch)!='_'){;}
     suffix = oldPatch+1;
     sprintf(tarNameBuf, "%s_%s_%d_%s",
         prefix, date, patchNo, suffix);
@@ -253,7 +261,19 @@ int setTarName(string &tarName, const char *date, const int patchNo)
 err:
     return -1;
 }
-
+int delDir(vector<string> &fileList)
+{
+    vector<string>::iterator it;
+    for (it = fileList.begin(); it!= fileList.end(); it++)
+    {
+        if ((*it)[strlen(it->c_str()) - 1] == '/')
+        {
+            fileList.erase(it); 
+            it--;
+        }
+    }
+    return 0;
+}
 /**
  * @brief 将包中的文件填入set　ｐkg_t中
  *         tar -tf a.tar.gz
@@ -269,6 +289,7 @@ int praseTargz(const char *path, Pkg_t &pkg)
     char fileName[256]={0};
     char dirName[256]={0};
     int  ret = -1;
+    char orginPwd[256]={0};
     vector<string> fileList;//file -> fileList
 
     if (!path)
@@ -281,6 +302,7 @@ int praseTargz(const char *path, Pkg_t &pkg)
     sprintf(fileName, "%s", basename(tmp));
     sprintf(dirName, "%s", dirname(tmp));
     sprintf(cmdBuf, "cd %s", dirName);
+    getcwd(orginPwd, sizeof(orginPwd));
     ret = chdir(dirName);
     if (0 == ret)
     {
@@ -289,7 +311,8 @@ int praseTargz(const char *path, Pkg_t &pkg)
         {
             ret = -1;
         }
-        chdir("../");
+        chdir(orginPwd);
+        delDir(fileList);
         pkg.list.insert(fileList.begin(), fileList.end());//将vector中的string全部插入集合set中。
         pkg.pkgName = dirName;
         pkg.tarName = fileName;
@@ -310,7 +333,7 @@ err:
  */
 int cpFileFromTar2Dst(const pkg_ele_t &ele, const char *dst, const char *tarName)
 {
-    char cmdBuf[256]={0};
+    char cmdBuf[512]={0};
     char srcDirTmp[256]={0};
     char dstDirTmp[256]={0};
     const char *stripParam = "--strip-components 1";
@@ -346,13 +369,6 @@ int cpFileFromTar2Dst(const pkg_ele_t &ele, const char *dst, const char *tarName
     }
     return ret;
 }
-#if 0
-int string2set(const string &s, )
-{
-    return 0;
-}
-#endif
-
 /*-----------------------------------------------------------------------------
  *  1. 重定义masFileSet集合的并操作
  *       pkgName大的则合并:以大的进行合并，合并的时候舍弃小的。
@@ -394,11 +410,13 @@ int main ( int argc, char *argv[] )
     char suffix[256] = {0};
     int i,j,k=0;
     char cmdBuf[256] = {0};
+    char zipDir[512]={0};
+    char dirTmp[256];
+    string zipFullPath;
+    char *p = NULL;
 
     memset(&ver, 0, sizeof(version_t));
     memset(&merge_params, 0, sizeof(merge_params));
-    merge_params.gen_patch  = 6000;
-    strcpy(merge_params.date, "2015.12.12"); 
     if (init_params(argc, argv)<0)
     {
         print_usage(stderr, 1);
@@ -408,7 +426,9 @@ int main ( int argc, char *argv[] )
     {
         ut_err("get pkg list fail\n");
     }
+
     //unzip zip
+    printf("---------begin unzip-------- \n");
     for (itr = zipList.begin(); itr<zipList.end();i++,itr++)
     {
         memset(&ver, 0, sizeof(version_t));
@@ -418,20 +438,17 @@ int main ( int argc, char *argv[] )
                 && (strcmp(ver.version, merge_params.version)==0)
                 )
         {
-            unzip(itr->c_str(), merge_params.dst);
+            zipFullPath = merge_params.patch_path;
+            zipFullPath +='/';
+            zipFullPath += *itr;
+            unzip(zipFullPath.c_str(), merge_params.dst);
         }
     }
-
-
-//    for (i=0; kinds[i]!=NULL; i++)
-//    {
+    printf("---------unzip end---------- \n");
+    system("rm "FICS_TMP_PATH" -rf");
 //    "server 64/32 linux2.6"
 //    "client 64/32 linux2.6/Win"
 //    "Massvr 64/32 linux2.6"
-    sprintf(cmdBuf, "%s_%s_%s_%d", merge_params.prefix, 
-            merge_params.version, merge_params.date,
-            merge_params.gen_patch);//fics_v1.0.0_date_5000
-    mkdir(cmdBuf, 0777);
     for (k=0; kinds[k]!=NULL; k++)
     {
         for (i=0; bits[i]!=NULL; i++)
@@ -456,9 +473,19 @@ int main ( int argc, char *argv[] )
                 {
                     memset(&ver, 0, sizeof(version_t));
                     getVerFromName(pathList[i].c_str(), &ver);
-                    sprintf(buf, "%s%s_%s_%s_%s/", merge_params.patch_path, merge_params.prefix, ver.version, ver.date, ver.patchNo);
-                    dirNameTmp = buf;
-                    pathList[i].insert(0, dirNameTmp);
+                    //日期和 zip不匹配的 删除掉
+                    if ((atoi(ver.patchNo) >= merge_params.patch_begin)&&
+                                atoi(ver.patchNo) <= merge_params.patch_end)
+                    {
+                        sprintf(buf, "%s/%s_%s_%s_%s/", merge_params.patch_path, merge_params.prefix, ver.version, ver.date, ver.patchNo);
+                        dirNameTmp = buf;
+                        pathList[i].insert(0, dirNameTmp);
+                    }
+                    else
+                    {
+                        pathList.erase(pathList.begin()+i);
+                        i--;
+                    }
                 }                
                 pkgFileSet.clear();
                 ret.clear();
@@ -476,28 +503,56 @@ int main ( int argc, char *argv[] )
                 {
                     _set_union(*it, ret);
                 }
+                printf("---------display need file list begin---------- \n");
                 for_each(ret.begin(), ret.end(), printEle);
+                printf("---------display need file list end  ---------- \n");
                 string tarName;
-                tarName = pathList[0];
+                tarName = basename((char *)pathList[0].c_str());//full path
                 setTarName(tarName, merge_params.date, merge_params.gen_patch);
-                system("mkdir -p ./tmp");
+                system("mkdir -p "FICS_TMP_PATH);
                 //mkdir tar gz
-                for(eleIt = ret.begin(); eleIt!=ret.end(); it++)
+                printf("---------get file from tar.gz begin ---------- \n");
+                for(eleIt = ret.begin(); eleIt!=ret.end(); eleIt++)
                 {
-                    if (cpFileFromTar2Dst(*eleIt, "./tmp", tarName.c_str()) < 0)//tar -zvf *.tar.gz /etc/file
+                    if (cpFileFromTar2Dst(*eleIt, FICS_TMP_PATH, tarName.c_str()) < 0)//tar -zvf *.tar.gz -C ./tmp etc/file
                     {
                         ut_err("cpFileFromTar2Dst fail.\n");
                         goto err;
                     }
                 }                
+                printf("---------get file from tar.gz end ------------ \n");
                 //auto generate xml
                 //tar -zcvf ./tmp/tarName -> ./tmp/tarName.tar.gz
+                strcpy(dirTmp, tarName.c_str());
+                p = strstr(dirTmp, ".tar.gz");
+                if (p)
+                {
+                    *p = '\0';
+                }
+                printf("----------tar    file    begin --------------- \n");
+                sprintf(cmdBuf, "tar -zcvf "FICS_TMP_PATH"%s  "FICS_TMP_PATH"%s --transform s="FICS_TMP_PATH"==", tarName.c_str(), dirTmp);
+                if (0 != system(cmdBuf))
+                {
+                    ut_err("tar %s -> %s fail!!!!\n", dirTmp, tarName.c_str());
+                    goto err;
+                }
+                printf("-----------tar    file    end ---------------- \n");
                 //rm ./tmp/tarName
+                sprintf(cmdBuf, "rm "FICS_TMP_PATH"%s -rf", dirTmp);
+                system(cmdBuf);
             }
         }
     }
     //mv ./tmp -> fics_v1.0.0_12.12_4002
+    sprintf(zipDir, "%s_%s_%s_%d", merge_params.prefix,
+            merge_params.version, merge_params.date, merge_params.gen_patch);
+    sprintf(cmdBuf, "rm %s -rf;mv "FICS_TMP_PATH" %s", zipDir, zipDir);//fics_v1.0.0_date_5000
+    system(cmdBuf);
     //zip fics_v1.0.0_12.12_4002.zip
+    printf("----------zip    file    begin --------------- \n");
+    sprintf(cmdBuf, "zip -r %s.zip %s", zipDir, zipDir);
+    system(cmdBuf);
+    printf("-----------zip    file    end ---------------- \n");
     //rm fics_v1.0.0_12.12_4002
     //tar -zxvf .... -> .tar.gz
 
