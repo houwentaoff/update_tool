@@ -275,7 +275,7 @@ int patchs2str(patchSet_t lossPatchs, string &set)
     {
         if (lossPatchs[i][0] != 0)
         {
-            sprintf(buf, "%d", lossPatchs[i][0]);
+            sprintf(buf, "%d", (int)lossPatchs[i][0]);
             set += buf;
             set += ",";
         }
@@ -489,7 +489,7 @@ int long2Date(long ldate, string &sdate)
     ldate  /= 100;
     year    = ldate;
     
-    sprintf(sdateBuf, "%d.%0.2d.%0.2d", year, month, day);
+    sprintf(sdateBuf, "%d.%.2d.%.2d", year, month, day);
     sdate = sdateBuf;
 
     return 0;
@@ -577,7 +577,7 @@ int gen_optional_pack_name(const ::PlatformInfoEx& PInfo,std::vector<std::string
 {
 	char lm[6];
 	lm[0]='_';
-	sprintf(lm+1,"%d",PInfo.OSRunMode);
+	sprintf(lm+1, "%d", (int)PInfo.OSRunMode);
 	std::string filename1 =lm;
 	filename1+="_";
 	filename1 +=PInfo.OSName;

@@ -17,6 +17,11 @@
  * =====================================================================================
  */
 #include "pkg.h"
+#include "include.h"
+#include <stdio.h>
+#include <string.h>
+#include <libgen.h>
+#include "utility.h"
 
 /**
  * @brief 集合的并集运算
@@ -70,6 +75,88 @@ int _set_difference(const Pkg_t &pkg, const set<pkg_ele_t> &rSet, Pkg_t &pkgRet)
     pkgRet.tarName = pkg.tarName;
     return 0;
 }
+int command(const char *cmd, vector<string> &content)
+{
+    FILE *fp = NULL;
+    char tmppath[256]={0};
+    int ret = -1;
+
+    if (NULL ==(fp = popen(cmd, "r")))
+    {
+        ut_err("popen fail\n");
+        goto err;
+    }//加一个判断错误的 mark
+    while (fscanf(fp, "%[^\n]s", tmppath) == 1)
+    {
+        fgetc(fp);
+        content.push_back(strchr(tmppath,'/'));//skip first dir
+    }
+    ret = pclose(fp);
+    return ret;
+err:
+    return ret;
+}
+
+int delDir(vector<string> &fileList)
+{
+    vector<string>::iterator it;
+    for (it = fileList.begin(); it!= fileList.end(); it++)
+    {
+        if ((*it)[strlen(it->c_str()) - 1] == '/')
+        {
+            fileList.erase(it); 
+            it--;
+        }
+    }
+    return 0;
+}
+/**
+ * @brief 将包中的文件填入set　ｐkg_t中
+ *         tar -tf a.tar.gz
+ * @param path
+ * @param pkg
+ *
+ * @return 
+ */
+int praseTargz(const char *path, Pkg_t &pkg)
+{
+    char  cmdBuf[256]={0};
+    char tmp[256]={0};
+    char fileName[256]={0};
+    char dirName[256]={0};
+    int  ret = -1;
+    char orginPwd[256]={0};
+    vector<string> fileList;//file -> fileList
+
+    if (!path)
+    {
+        ut_err("path is null\n");
+        ret = -1;
+        goto err;
+    }
+    strcpy(tmp, path);
+    sprintf(fileName, "%s", basename(tmp));
+    sprintf(dirName, "%s", dirname(tmp));
+    getcwd(orginPwd, sizeof(orginPwd));
+    ret = chdir(dirName);
+    if (0 == ret)
+    {
+        sprintf(cmdBuf, "tar -tf %s", fileName);
+        if (command(cmdBuf, fileList)!=0);
+        {
+            ret = -1;
+        }
+        chdir(orginPwd);
+        delDir(fileList);
+        pkg.list.insert(fileList.begin(), fileList.end());//将vector中的string全部插入集合set中。
+        pkg.pkgName = dirName;
+        pkg.tarName = fileName;
+    }
+    return ret;
+err:
+    return ret;
+}
+
 bool Pkg_t::empty()
 {
     return list.empty();

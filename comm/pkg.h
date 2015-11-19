@@ -72,4 +72,14 @@ int _set_difference(const Pkg_t &pkg, set<pkg_ele_t> &rSet, vector<string> &ret)
  * @return 
  */
 int _set_union(const Pkg_t &pkg, set<pkg_ele_t> &ret);
+/**
+ * @brief 将包中的文件填入set　ｐkg_t中
+ *         tar -tf a.tar.gz
+ * @param path
+ * @param pkg
+ *
+ * @return 
+ */
+int praseTargz(const char *path, Pkg_t &pkg);
+
 #endif

@@ -9,6 +9,7 @@
 #include <windows.h>
 #else
 #include<unistd.h>
+#include <stdio.h>
 #endif
 
 #include <stdlib.h>
@@ -99,16 +100,15 @@ public:
 		//finit();
 	}
 public:
-	RPC_PROXY_HANDLE<T>* create_rpc_proxy(char* name,char* ip=NULL/*default: 127.0.0.1*/,unsigned short port=2815/*use port 2815 by default*/)
+	RPC_PROXY_HANDLE<T>* create_rpc_proxy(const char* name, char* cip=NULL/*default: 127.0.0.1*/,unsigned short port=2815/*use port 2815 by default*/)
 	{
-		if( ip != NULL )
+		if( cip != NULL )
 		{
-			this->ip = ip;
+			this->ip = cip;
 		}
 		
 		this->port = port;
 		servant = name;
-
 		
 		typename T::_ptr_type ret =NULL;
 		orb = GenOrb();
@@ -120,13 +120,13 @@ public:
 		}
 		char buff[256];
 		strcpy(buff,"corbaloc:iiop:");
-		if ( ip == NULL )
+		if ( ip.c_str() == NULL )
 		{
 			ip = "127.0.0.1";
 		}
-		strcat(buff,ip);
+		strcat(buff, cip);
 		char temp[10]={0};
-		sprintf(temp,"%d",port);
+		sprintf(temp,"%d", (unsigned int)port);
 		strcat(buff,":");
 		strcat(buff,temp);
 		strcat(buff,"/");

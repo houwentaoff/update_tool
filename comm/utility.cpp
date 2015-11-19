@@ -710,8 +710,7 @@ int FiExeWinUncompress(const char*cmd)
 #else
 int FiExecuteShell(const char* cmd)
 { 
-    printf(cmd);
-    printf("\n");
+    printf("%s\n", cmd);
     system(cmd);
     return 0;
 }

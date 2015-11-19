@@ -48,14 +48,6 @@
         }                                           \
     }while(0)
 
-
-
-struct FilePair 
-{
-    std::string file1;
-    std::string file2;
-};
-
 const char *prixMatrix[] = {"server", "client", "Massvr", NULL};
 
 FiUpdateAssistant::FiUpdateAssistant(FiEvent* hEvent)
@@ -65,7 +57,7 @@ FiUpdateAssistant::FiUpdateAssistant(FiEvent* hEvent)
     
     rHandle =NULL;
     rHandle= NULL;
-    fpdownload= NULL;
+    fpdownload= (int)NULL;
     bReplaceEnd= false;
     
     bUpFinished = false;
@@ -87,7 +79,7 @@ FiUpdateAssistant::FiUpdateAssistant()
     
     rHandle =NULL;
     rHandle= NULL;
-    fpdownload= NULL;
+    fpdownload= (int)NULL;
     bReplaceEnd= false;
     evnt = NULL;
 
@@ -227,18 +219,16 @@ int FiUpdateAssistant::QueryPlatformInfo(PlatformInfoEx& info)
 #ifdef __linux__
     info.platform =ELINUX;
     info.OSName ="Linux";
-    ut_dbg("fiupdate loader get config platform:linux %d bit\n",info.OSRunMode);
+    ut_dbg("fiupdate loader get config platform:linux %d bit\n", (int)info.OSRunMode);
     fflush(stdout);
 #else
     info.platform = EMAC;
     info.OSName="Mac";
-    ut_dbg("fiupdate loader get config platform:mac %d bit\n",info.OSRunMode);
+    ut_dbg("fiupdate loader get config platform:mac %d bit\n", (int)info.OSRunMode);
     fflush(stdout);
 #endif
 #endif
-
     return 0;
-
 }
 int FiUpdateAssistant::startup()
 {
@@ -445,9 +435,9 @@ int FiUpdateAssistant::beginDownloadPkg(const char* filename)
         FiGetCurDir(sizeof(buff),buff);
         std::string fullname(buff);
 #ifdef WIN32 
-        char *suffix =".tar.gz";
+        const char *suffix =".tar.gz";
 #else
-        char *suffix = ".tar.gz";
+        const char *suffix = ".tar.gz";
 #endif
         char* p = strstr((char*)filename, suffix);
         assert(p!=NULL);
@@ -567,12 +557,12 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
      *-----------------------------------------------------------------------------*/
     string fileName;
     vector<string> pkgList;
-    char *suffix        = "";//".tar.gz";
+    const char *suffix        = "";//".tar.gz";
     const char *prefix  = prixMatrix[which];
     char *verTest       = netVer.version;//"v1.0.0"; 不能为空""
     int i               = 0;
     int ret             = 0;
-    char *path          = "./";
+    const char *path          = "./";
     string pkgName   = "server_v1.0.0_2015.10.10_4005_32/64_Linux2.6.tar.gz";
     int localPatchNo = atoi(ver->patchNo);
     int size         = 0;
@@ -713,7 +703,7 @@ int FiUpdateAssistant::installOldPkg(const char *fileName)
 int FiUpdateAssistant::installSinglePatch(const char *fileName)
 {
     int  ret = 0;
-    char *suffix =".tar.gz";
+    const char *suffix =".tar.gz";
     char *end = NULL;
 #ifndef WIN32
     const char *rootDir = "/sobey/fics/update/";
@@ -1403,7 +1393,7 @@ bool FiUpdateAssistant::checkfolder(const char* folder1_full,const char* folder2
     }
     return true;
 }
-static char* pause5="ping -n 5 localhost > nul \r\n";
+static const char* pause5="ping -n 5 localhost > nul \r\n";
 int FiUpdateAssistant::setPlatform(long which)
 {
     this->which = which;
@@ -1793,7 +1783,7 @@ int FiUpdateAssistant::svc()//legecy
                     pwdFullPath.c_str());
             //recover
             sprintf(uncmd,"install -p -v -D  %sbackup/%s %s/\n",
-                    pkgDir.c_str(), layout.strName.c_str(), dirname(pwdFullPath.c_str()));
+                    pkgDir.c_str(), layout.strName.c_str(), dirname((char *)pwdFullPath.c_str()));
             FiWriteFile(fpinstall,backcmd,strlen(backcmd));
             FiWriteFile(fpinstall,cmd,strlen(cmd));
             FiWriteFile(fpuninstall,uncmd,strlen(uncmd));
@@ -2084,7 +2074,7 @@ bool FiUpdateAssistant::restartAPP(const char *app)
     FiExecuteShell(elf);//need to modify
 #ifdef WIN32
 #else
-    char *path = "/sobey/fics/update/FiUpdateLoader.log";
+    const char *path = "/sobey/fics/update/FiUpdateLoader.log";
     freopen(path,"a+",stdout);
     freopen(path,"a+",stderr);
     ut_dbg("fiwatchdog &\n");
@@ -2169,19 +2159,10 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
     FiGetCurDir(sizeof(buff),buff);
     std::string rootpath(buff);
     chdir(buff);
-    std::string cmd("cd ");
-    cmd += rootpath.c_str();
-    FiExecuteShell(cmd.c_str());
 #ifdef WIN32
     std::string installpath=rootpath+"..\\";
 #else
     std::string installpath=rootpath+"../";
-#endif
-#ifdef WIN32
-    cmd ="cd ";
-    cmd+= rootpath[0];
-    cmd+=rootpath[1];
-    FiExecuteShell(cmd.c_str());
 #endif
 
 #ifdef WIN32
@@ -2289,20 +2270,6 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
         writeLocalVer(&curVer);
     }
 
-    //     FILE* fp = fopen("versionctl.txt","wb+");
-    //     assert(fp!=NULL);
-    //     fseek(fp,0,SEEK_SET);
-    //     std::string nversion("version:");
-    //     nversion+=version;
-    //     std::string ndate("date:");
-    //     ndate+=date;
-    // 
-    //     fputs(nversion.c_str(),fp);
-    //     fputs("\n",fp);
-    //     fputs(ndate.c_str(),fp);
-    //     fputs("\n",fp);
-    //     fclose(fp);
-
     ut_dbg("roll back finished!\n");
     fflush(stdout);
 finish:
@@ -2314,78 +2281,6 @@ finish:
     NOTIFY_UPDATELAOAD_FINISH_SUCCESS();
     return 0;
 }
-#if 0
-int FiUpdateAssistant::UpdateVersionFile()
-{
-    string newHash = "";
-    
-    newerdate = netVer.date;
-    newerver  = netVer.version;
-    newHash   = netVer.reserved.hash;
-    if (which == MAS_SRV)
-    {
-        return 0;
-    }
-    if (newerdate == "" || newerver =="" || newHash == "")
-    {
-        return 0;
-    }
-    
-    sscanf(netVer.patchNo, "%d", &newerpatchno);
-    
-    FILE* curverfp = fopen(_PATH_VERSION,"wb+");
-    fseek(curverfp,0,SEEK_SET);
-    std::string nversion("version:");
-    nversion+=newerver;
-    std::string ndate("date:");
-    ndate+=newerdate;
-    fputs(nversion.c_str(),curverfp);
-#ifndef WIN32
-    fputs("\n",curverfp);
-#else
-    fputs("\r\n",curverfp);
-#endif
-    fputs(ndate.c_str(),curverfp);
-#ifndef WIN32
-    fputs("\n",curverfp);
-#else
-    fputs("\r\n",curverfp);
-#endif
-    char tmp[10];
-    if( newerpatchno>0 )
-    {
-        std::string npno("patch:");
-        
-        sprintf(tmp,"%d",newerpatchno);
-        npno +=tmp;
-    
-    fputs(npno.c_str(),curverfp);
-#ifndef WIN32
-    fputs("\n",curverfp);
-#else
-    fputs("\r\n",curverfp);
-#endif
-    }
-    std::string name("file_name:");
-    name+= "fics_";
-    name+=newerver+"_"+newerdate;
-//    if(newerpatchno>0)
-//    {
-//        name+="_patch";
-//        name+=tmp;
-//    }
-    
-    fputs(name.c_str(),curverfp);
-    if ()
-#ifndef WIN32
-    fputs("\n",curverfp);
-#else
-    fputs("\r\n",curverfp);
-#endif
-    fclose(curverfp);
-    return 0;
-}
-#endif
 /**
  * @brief 比较服务器的Patchs和本地的包进行对比，并将缺少的包标记到 lossPatchs中
  *
