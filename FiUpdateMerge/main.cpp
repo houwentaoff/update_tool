@@ -45,6 +45,7 @@ static struct
     char date[128];
     int gen_patch;
     bool debug;
+    bool nozip;
 }merge_params;
 static const char* program_name;
 static struct option long_options[] = {
@@ -58,9 +59,10 @@ static struct option long_options[] = {
     {"date", 1, NULL, '!'}, 
     {"patch", 1, NULL, '@'}, 
     {"debug", 0, NULL, '#'}, 
+    {"nozip", 0, NULL, '$'}, 
     {0, 0, 0, 0}    
 };
-static const char *short_options = "hv:b:e:p:d:~:@:#";
+static const char *short_options = "hv:b:e:p:d:~:@:#$";
 
 static void print_usage(FILE *f, int exit_code)
 {
@@ -77,6 +79,7 @@ static void print_usage(FILE *f, int exit_code)
             "\t -p  --path  (patch path)       default:\"./\"\n"
             "\t -d  --dest  (full version path) default:\"./\"      \n"
             "\t --debug    (debug mode)       \n"
+            "\t --nozip    (dont unzip files)use orgin.       \n"
             "\t example:%s  --version 1.0.0 -b 4000 -e 4090 --date 2015.11.19 --patch 4100 -p ./ -d ./\n",
             BASEINTERVAL,
             program_name
@@ -129,6 +132,9 @@ static int init_params(int argc, char **argv)
             break;
         case '#':
             merge_params.debug = true;
+            break;
+        case '$':
+            merge_params.nozip = true;
             break;
         default:
             return -1;
@@ -345,16 +351,17 @@ int main ( int argc, char *argv[] )
     {
         ut_err("get pkg list fail\n");
     }
-
-    //unzip zip
-    printf("---------begin unzip-------- \n");
-    for (itr = zipList.begin(); itr<zipList.end();i++,itr++)
+    if (!merge_params.nozip)
     {
-        memset(&ver, 0, sizeof(version_t));
-        getVerFromName(zipList[i].c_str(), &ver);
-        if ((atoi(ver.patchNo) >= merge_params.patch_begin 
-                    && atoi(ver.patchNo) <= merge_params.patch_end)
-                && (strcmp(ver.version, merge_params.version)==0)
+        //unzip zip
+        printf("---------begin unzip-------- \n");
+        for (itr = zipList.begin(); itr<zipList.end();i++,itr++)
+        {
+            memset(&ver, 0, sizeof(version_t));
+            getVerFromName(zipList[i].c_str(), &ver);
+            if ((atoi(ver.patchNo) >= merge_params.patch_begin 
+                        && atoi(ver.patchNo) <= merge_params.patch_end)
+                    && (strcmp(ver.version, merge_params.version)==0)
                 )
         {
             zipFullPath = merge_params.patch_path;
@@ -364,6 +371,7 @@ int main ( int argc, char *argv[] )
         }
     }
     printf("---------unzip end---------- \n");
+    }
     system("rm "FICS_TMP_PATH" -rf");
 //    "server 64/32 linux2.6"
 //    "client 64/32 linux2.6/Win"
@@ -441,13 +449,34 @@ int main ( int argc, char *argv[] )
                 }                
                 printf("---------get file from tar.gz end ------------ \n");
                 //auto generate xml
-                //tar -zcvf ./tmp/tarName -> ./tmp/tarName.tar.gz
                 strcpy(dirTmp, tarName.c_str());
                 p = strstr(dirTmp, ".tar.gz");
                 if (p)
                 {
                     *p = '\0';
                 }
+#if 1
+                printf("---------merge update.xml from tar.gz begin ---------- \n");
+                vector<patchEle_t> list,xmlRet;
+                char xml_path[256]={0};
+                for(it = pkgFileSet.begin(); it!=pkgFileSet.end(); it++)
+                {
+                    list.clear();
+                    pkg_ele_t ele(it->pkgName, "/update.xml", it->tarName);
+                    if (cpFileFromTar2Dst(ele, FICS_TMP_PATH, tarName.c_str()) < 0)
+                    {
+                        ut_err("cpFileFromTar2Dst update fail.\n");
+                        goto err;
+                    }
+                    sprintf(xml_path, FICS_TMP_PATH"%s/update.xml", dirTmp);
+                    load_xml(list, xml_path);
+                    mergeUpdateXml(list, xmlRet);
+                }
+                mk_xml(xmlRet, xml_path);
+                printf("---------merge update.xml from tar.gz end ------------ \n");
+#endif
+                //tar -zcvf ./tmp/tarName -> ./tmp/tarName.tar.gz
+
                 printf("----------tar    file    begin --------------- \n");
                 sprintf(cmdBuf, "tar -zcvf "FICS_TMP_PATH"%s  "FICS_TMP_PATH"%s --transform s="FICS_TMP_PATH"==", tarName.c_str(), dirTmp);
                 if (0 != system(cmdBuf))

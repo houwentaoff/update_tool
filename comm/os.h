@@ -28,6 +28,7 @@
 #define popen(x, y)       _popen(x, y)
 #define pclose(x)         _pclose(x)
 #define chdir(x)          _chdir(x)
+#define getcwd(x, y)      _getcwd(x, y)  /*  */
 //#define sleep(x)          Sleep(1000*x)
 #define errno                 (-1)//
 #define S_ISDIR(m) (((m) & 0170000) == (0040000))

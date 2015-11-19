@@ -27,11 +27,12 @@
 #include "string.h"
 #include "include.h"
 #include "utility.h"
+#include "pkg.h"
 #include <unistd.h>
 
 using namespace std;
 
-#define LEN_NAME            128/*  */
+
 #define XML_DEFAULT         "update.xml"   /*  */
 #define DEFAULT_LOG_PATH    "log.txt"      /*  */
 
@@ -73,17 +74,6 @@ typedef enum{
     _BIT64=0,
     _BIT32,
 }bit_e;
-typedef enum{
-    ADD=0,
-    MDF,
-    DEL,
-}action_e;
-typedef enum{
-    EXE=0,
-    SVC,
-    TXT,
-    APP,
-}file_type_e;
 
 static struct {
     version_t version;
@@ -98,14 +88,6 @@ static struct {
     char conf_file[256];
     char log_path[256];
 }upparams;
-
-typedef struct patchEle
-{
-    char src_name [LEN_NAME];
-    char dst_name [LEN_NAME];
-    action_e action;
-    file_type_e type;
-}patchEle_t;
 
 static void print_usage(FILE *f, int exit_code)
 {
@@ -222,43 +204,7 @@ err:
     if (fp)fclose(fp);
     return -1;    
 }
-int mk_xml(vector<patchEle_t> &list)
-{
-    FILE *fp;
-    const char *xml_name = XML_DEFAULT;
-    char *p;
-    char eleBuf[512] = {0};
-    std::vector<patchEle_t>::iterator itr;
-    patchEle_t *pele;
-    
-    fp = fopen(xml_name, "wb");
-    if(fp ==NULL)
-    {
-        ut_err("mk xml fail\n");
-        goto err;
-    }
-    fputs("<fiupdate>", fp);
-    fputs("\n", fp);
-    for (itr=list.begin(); itr!=list.end(); itr++)
-    {
-        pele = &(*itr);
-        memset(eleBuf, 0, sizeof(eleBuf));
-//        std::string record = isreg?"<reg name=\"":"<file name=\"";
-        sprintf(eleBuf, "<file name=\"%s\" action=\"%c\" location=\"%s\"/>",
-                pele->src_name,
-                (pele->action == ADD ? 'A' : pele->action == MDF ? 'M':'D'),
-                pele->dst_name);
-        fputs(eleBuf, fp);
-        fputs("\n", fp);
-    }
-    fputs("</fiupdate>", fp);
-    fputs("\n", fp);
-    fclose(fp);
 
-    return 0;
-err:
-    return -1;
-}
 int init_params(int argc, char *params[])
 {
     int ch;
@@ -562,7 +508,7 @@ int main ( int argc, char *argv[] )
             ut_err("load conf fail\n");
             goto err;
         }
-        if (mk_xml(list)<0)
+        if (mk_xml(list, XML_DEFAULT)<0)
         {
             ut_err("mk xml fail\n");
             goto err;
