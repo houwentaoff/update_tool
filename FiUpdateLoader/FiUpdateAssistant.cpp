@@ -1436,14 +1436,7 @@ int FiUpdateAssistant::svc()//legecy
     //rootpath.erase(index,rootpath.size()-index);
     chdir(rootpath.c_str());//set current dir
 
-    std::string strcmd("cd ");
-    strcmd += rootpath.c_str();
-    FiExecuteShell(strcmd.c_str());
 #ifdef WIN32
-    strcmd ="cd ";
-    strcmd+= rootpath[0];
-    strcmd+=rootpath[1];
-    FiExecuteShell(strcmd.c_str());
     std::string unpress;
     unpress += "\"";
     unpress +="\"";
@@ -1491,11 +1484,9 @@ int FiUpdateAssistant::svc()//legecy
     unpress += rootpath;
     FiExecuteShell(unpress.c_str());
 #endif
-    strcmd ="cd ";
-    strcmd += dirfilename.c_str();
     pkgDir += dirfilename;
     pkgDir += "/";//mark need to modify
-    FiExecuteShell(strcmd.c_str()); //enter pack dir
+    chdir(dirfilename.c_str());//enter pack dir
 
 #ifdef WIN32
     std::string downfilefullname = rootpath+dirfilename+"\\";
@@ -2256,7 +2247,6 @@ int FiUpdateAssistant::RollBack(version_t *dstVer)
         //update history
         record2History(allfolders[j].c_str());
 //        writeLocalVer(&curVer);        
-        //FiExecuteShell("cd ../");
     }
     if (installSinglePatch(allfolders[j].c_str()) < 0)
     {
