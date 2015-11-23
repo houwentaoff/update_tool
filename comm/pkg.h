@@ -55,6 +55,17 @@ class pkg_ele_t
         string pkgName;//tar.gz包名 如 server_v1.0.0_2015.12.10_4000_64_Linux2.6.tar.gz
         string file;//包中的一个文件名
 };
+class myequal 
+{
+    public:
+        bool operator() (const Pkg_t &a, const Pkg_t &b) const 
+        {
+            if(a.pkgName < b.pkgName)
+                return true;
+            else
+                return false;
+        }
+};
 typedef enum{
     ADD=0,
     MDF,
@@ -86,7 +97,7 @@ typedef struct patchEle
  *
  * @return 
  */
-int _set_difference(const Pkg_t &pkg, set<pkg_ele_t> &rSet, vector<string> &ret);
+int _set_difference(const Pkg_t &pkg, const set<pkg_ele_t> &rSet, Pkg_t &pkgRet);
 /**
  * @brief 集合的并集运算
  *
@@ -104,6 +115,7 @@ int _set_union(const Pkg_t &pkg, set<pkg_ele_t> &ret);
  * @param pkg
  *
  * @return 
+ * @sa      praseDirTargz
  */
 int praseTargz(const char *path, Pkg_t &pkg);
 /**
@@ -135,5 +147,14 @@ int load_xml(vector<patchEle_t> &list, const char *xml_name);
  * @sa   在合并补丁包中使用，用于合并同类型补丁包中的update.xml元素
  */
 int mergeUpdateXml(vector<patchEle_t> &list, vector<patchEle_t> &ret);
-
+/**
+ * @brief 
+ *
+ * @param path
+ * @param pkg
+ *
+ * @return 
+ * @sa      praseTargz
+ */
+int praseDirTargz(const char *path, Pkg_t &pkg);
 #endif

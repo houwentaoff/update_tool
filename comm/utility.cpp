@@ -8,6 +8,7 @@
 #include<windows.h>
 #include<direct.h>
 #include<assert.h>
+#include<sys/stat.h> 
 #else
 #include<pthread.h>
 #include<unistd.h>
@@ -1039,7 +1040,11 @@ char *get_commonlog_time(void)
     {
 reopen:
         struct stat statf;
-        G.logFile.isRegular = (fstat(G.logFile.fd, &statf) == 0 && S_ISREG(statf.st_mode));
+        G.logFile.isRegular = (fstat(G.logFile.fd, &statf) == 0 
+#ifndef WIN32
+            && S_ISREG(statf.st_mode)
+#endif
+            );
         G.logFile.size = statf.st_size;
     }
     if (G.logFileSize && G.logFile.isRegular && G.logFile.size > G.logFileSize)
@@ -1077,7 +1082,10 @@ reopen:
 			goto reopen;
 #endif
         }
+#ifndef WIN32
 		ftruncate(G.logFile.fd, 0);
+#else
+#endif
     }
     if (use_localtime) {
         t = localtime(&current_time);

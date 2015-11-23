@@ -301,8 +301,8 @@ FiUpdateMgrImpl::~FiUpdateMgrImpl()
 
 		closedir(dp);                  
 #endif
-
-		assert(!folder.empty());
+        if (folder.empty())return 1;
+		//assert(!folder.empty());
 		
 		std::string selectversion ;
 		std::string selectdate;

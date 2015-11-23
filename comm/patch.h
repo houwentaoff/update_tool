@@ -304,4 +304,5 @@ int delEleMD52Cache(const char* filename, string &localMd5);
  * @return 
  */
 bool unzip(const char* src, const char *dst);
+int getLastVerFromHis(version_t *ver, const char *path);
 #endif

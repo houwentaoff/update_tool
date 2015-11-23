@@ -180,17 +180,7 @@ static int init_params(int argc, char **argv)
     return 0;
 }
 
-class myequal 
-{
-    public:
-        bool operator() (const Pkg_t &a, const Pkg_t &b) const 
-        {
-            if(a.pkgName < b.pkgName)
-                return true;
-            else
-                return false;
-        }
-};
+
 void printEle(const pkg_ele_t &l)
 {
     cout<<l.pkgName<<":"<<l.file<<endl;

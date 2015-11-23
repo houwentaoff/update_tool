@@ -19,6 +19,8 @@
 
 #include "patch.h"
 #ifdef WIN32
+#include <sys/types.h>
+#include <sys/stat.h>
 #else
 #include <dirent.h>
 #endif
@@ -762,4 +764,33 @@ bool unzip(const char* src, const char *dst)
     return true;
 err:
     return false;
+}
+int getLastVerFromHis(version_t *ver, const char *path)
+{
+    FILE *fp = NULL;
+    char cmd[512] = {0};
+    char line[256] = {0};
+    int ret = -1;
+
+    if (!ver || !path)
+    {
+        ut_err("ver is null\n");
+        goto err;
+    }
+    //tail -1 path
+    sprintf(cmd, "tail -1 %s", path);
+    if (NULL ==(fp = popen(cmd, "r")))
+    {
+        ut_err("popen fail\n");
+        goto err;
+    }    
+    while (fscanf(fp, "%[^\n]s", line) == 1)
+    {
+        fgetc(fp);
+    }
+    ret = pclose(fp);    
+    sscanf(line, "%*s %s %s %d", ver->version, ver->date, ver->patchNo);
+    return ret;
+err:
+    return ret;
 }

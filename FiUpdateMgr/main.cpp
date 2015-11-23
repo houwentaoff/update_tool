@@ -131,11 +131,20 @@ bool updateLocal(version_t *pver)
     bool exist = false;
     char fullName[256]={0};
     char downPkgDir[256]={0};
+    version_t hisVer;
 
     if (!pver)
     {
         ut_err("ver is null\n");
         goto err;
+    }
+    memset(&hisVer, 0, sizeof(version_t));
+    getLastVerFromHis(&hisVer, HISTORY);
+    if (strcmp(hisVer.patchNo, pver->patchNo) != 0)
+    {
+        ver = hisVer.version;
+        date = hisVer.date;
+        patchNo = hisVer.patchNo;
     }
     uname(&uts);
     //info.OSRunMode = sizeof(long)*8;
@@ -169,9 +178,9 @@ bool updateLocal(version_t *pver)
     struct stat statBuf;
     strcpy(fullName, _PATH_PKG_DL);
     sprintf(fullName+strlen(fullName), "fics_%s_%s_%s",
-            pver->version, pver->date, pver->patchNo);
+            ver, date, patchNo);
     sprintf(downPkgDir, "%sfics_%s_%s_%s",
-            _PATH_PKG_DL, pver->version, pver->date, pver->patchNo);
+            _PATH_PKG_DL, ver, date, patchNo);
     if (-1 == lstat(fullName, &statBuf))
     {
         ut_err("does the pkg dir not exist?\n");
@@ -527,8 +536,8 @@ int main(int argc,char** argv)
     G.root = _root;
 	str+="FiUpdateMgr.log";
 	freopen(str.c_str(),"a",stdout);
-#if 0
-    if (0 == chdir(_path))
+#if 1
+    if (0 == chdir(G.exe))
     {
         ut_dbg("change cur dir success\n");
     }

@@ -20,7 +20,7 @@ endif
 ifeq "$(CFG)" "Debug"
 OUTDIR=Debug
 OUTFILE=$(OUTDIR)/FiUpdateLoader
-CFG_INC= -I./
+CFG_INC= -I./ -I../comm
 CFG_LIB=-Wl,-Bdynamic -lpthread -lrt -ldl -Wl,-Bstatic -lomniORB4 \
 	-lomnithread -lomniDynamic4 -Wl,-Bdynamic
 CFG_OBJ=
@@ -83,7 +83,7 @@ endif
 ifeq "$(CFG)" "Release"
 OUTDIR=Release
 OUTFILE=$(OUTDIR)/FiUpdateLoader
-CFG_INC=
+CFG_INC=-I./ -I../comm
 CFG_LIB=-Wl,-Bdynamic -lpthread -lrt -ldl -Wl,-Bstatic -lomniORB4 \
 	-lomnithread -lomniDynamic4 -Wl,-Bdynamic
 CFG_OBJ=

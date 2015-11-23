@@ -1,26 +1,14 @@
 #include "FiUpdateAssistant.h"
-#include "../comm/utility.h"
-#include "../comm/include.h"
-#include "../comm/patch.h"
+#include "utility.h"
+#include "include.h"
+#include "patch.h"
+#include "pkg.h"
 #include "SAXParserHandler.h"
-#ifdef _WIN32
-#include <direct.h>
-#include <io.h>
-#else
-#include <stdarg.h>
-#include <sys/utsname.h>
-#include <libgen.h>
-#include<unistd.h>
-#include <errno.h>
-#endif
-#include <sys/stat.h>
-#include<stdio.h>
-#include<stdlib.h>
-#include<string>
+#include <string>
 #include <assert.h>
-#include<vector>
-#include<fcntl.h>
-#include<algorithm>
+#include <vector>
+#include <algorithm>
+#include <set>
 #pragma  warning(disable:4819)
 #pragma  warning(disable:4996)
 #define NOTIFY_UPDATELAOAD_FINISH_FAIL() \
@@ -678,38 +666,56 @@ int FiUpdateAssistant::installOldPkg(const char *fileName)
      *  2. 备份:已经升级过，则从高版本中的备份目录中copy
      *          没有升级过，则直接备份
      *-----------------------------------------------------------------------------*/
+#if 1
     Pkg_t pkg;
     Pkg_t shouldInstallPkg;
-    set<Pkg_t, myequal>pkgFileSet 
-    set<pkg_ele_t> unionRet;
-    set<Pkg_t, myequal>::iterator it;
+    std::set<Pkg_t, myequal>pkgFileSet;
+    std::set<pkg_ele_t> unionRet;
+    std::set<Pkg_t, myequal>::iterator it;
     vector<patchEle_t> list;
+    vector<patchEle_t>::iterator itr;
+    vector<string> pkgList;
+    string xml_path;
+    string pkgDir = G.exe;
+    pkgDir += fileName;
+    char *pos = NULL;
+    char cmd[512]={0};
     int i=0;
-    if (getPkgList(G.exe, prixMatrix[which], "", netVer.version, pkgList) < 0)
+    int size=0;
+
+    if (pos = strstr((char *)pkgDir.c_str(), ".tar.gz"))
+    {
+        *pos = '\0';
+        append_slash(pos);
+    }
+    if (getPkgList(G.exe, prixMatrix[which], "", netVer.version, pkgList) < 0)//server_v1.0.0_4006....
     {
         ut_err("get pkg fail\n");
     }
     if (!pkgList.empty())
     {
-        sort(pkgList.begin(); pkgList.end(), comp);
+        sort(pkgList.begin(), pkgList.end(), comp);
         size = pkgList.size();
-        for (i=size-1, i>0; i--)
+        for (i=size-1; i>0; i--)
         {
-            if (strstr(pkgList[i].c_str(), ".tar.gz");)
+            if (strstr(pkgList[i].c_str(), ".tar.gz")||
+                getPatchNumFromName(pkgList[i].c_str()) <= getPatchNumFromName(fileName))// patch num <= cur old pkg
             {
-                pkgList.erase(pkgList.begin()+i);
+                pkgList.erase(pkgList.begin()+i);//del all tar.gz, patchnum <= current patch num
             }
         }
     }
-    for (i=0;i<pathList.size(); i++)
+    for (i=0;i<pkgList.size(); i++)
     {
         pkg.clear();
-        praseDirTargz(pathList[i].c_str(), pkg);//write -> pkg
+        praseDirTargz(pkgList[i].c_str(), pkg);//write -> pkg
         if (!pkg.empty())
         {
             pkgFileSet.insert(pkg);
         }
     }
+    pkg.clear();
+    praseDirTargz(fileName, pkg);
     //相邻集合求并集
     for(it = pkgFileSet.begin(); it!=pkgFileSet.end(); it++)
     {
@@ -717,26 +723,29 @@ int FiUpdateAssistant::installOldPkg(const char *fileName)
     }
     //当前pkg文件集合　和所有高版本pkg文件集合　差集
     _set_difference(pkg, unionRet, shouldInstallPkg);
-    load_xml(list, xml_path);
+    xml_path = pkgDir;
+    xml_path += "update.xml";
+    load_xml(list, xml_path.c_str());
     if (list.empty())
     {
         ut_err("updatexml is null\n");
     }
-    for (it = list.begin; it!=list.end(); it++)
+    for (itr = list.begin(); itr!=list.end(); itr++)
     {
-        if (shouldInstallPkg.list.find(it->src_name)!=shouldInstallPkg.list.end())
+        if (shouldInstallPkg.list.find(itr->src_name)!=shouldInstallPkg.list.end())
         {
             //install -p -v it->src_name it->dst_name
             //install
 #ifdef WIN32
-            sprintf(cmd, "xcopy /Y %s\\%s    %s", pkgDir.c_str(), RelativePkgDir.c_str(), it->dst_name);
+            sprintf(cmd, "xcopy /Y %s%s %s", pkgDir.c_str(), itr->src_name, itr->dst_name);
 #else
-            sprintf(cmd, "install p -v -D -S .back %s/%s %s", pkgDir.c_str(), it->src_name, it->dst_name);
+            sprintf(cmd, "install p -v -D -S .back %s/%s %s", pkgDir.c_str(), itr->src_name, itr->dst_name);
 #endif
             system(cmd);
             //back up
         }
     }
+#endif
 #if 0
     //1. 根据update.xml中的文件进行遍历
     for ()

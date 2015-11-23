@@ -29,12 +29,14 @@
 #define pclose(x)         _pclose(x)
 #define chdir(x)          _chdir(x)
 #define getcwd(x, y)      _getcwd(x, y)  /*  */
+//#define fstat(x, y)       _fstat(x, y)  
 #define append_slash(x)  strcat(x, "\\")          /*  */
 //#define sleep(x)          Sleep(1000*x)
 #define errno                 (-1)//
 #define S_ISDIR(m) (((m) & 0170000) == (0040000))
 #define ACCESS _access
 #define MKDIR(a) _mkdir((a))
+#define STDOUT_FILENO           1
 //#define stat(x, y)           _stat(x, y)
 #else
 /* ========================================================================

@@ -21,6 +21,21 @@
 
 #include "debug.h"
 #include "os.h"
+#include <time.h>
+#include <fcntl.h>
+#ifdef WIN32
+#include <direct.h>
+#include <windows.h>
+#include <io.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#else
+#include <stdarg.h>
+#include <sys/utsname.h>
+#include <libgen.h>
+#include <unistd.h>
+#include <errno.h>
+#endif
 
 #define RPC_PORT               5781 /*  */
 #define RPC_SERVER_NAME        "FiUpdateMgr"
@@ -40,7 +55,7 @@
 #define G (*ptr_to_globals)
 
 #define INIT_G()  do { \
-    ptr_to_globals = (void *)&globals; \
+    ptr_to_globals = (struct globals *)&globals; \
     memset((void *)&globals, 0, sizeof(globals)); \
 }while (0)
 
