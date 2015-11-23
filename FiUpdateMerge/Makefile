@@ -6,7 +6,7 @@ CFG_LIB=-Wl,-Bdynamic -lpthread -lrt -ldl -Wl,-Bstatic -lomniORB4 \
 INC=-I../comm -I../FiUpdateLoader
 
 fimerge:utility.o patch.o pkg.o main.o Md5.o Markup_linux.o QueryUpdateSK.o FiUpdateAssistant.o SAXParserHandler.o 
-	g++ $^ -o $@ ${CFG_LIB}
+	g++ -g $^ -o $@ ${CFG_LIB}
 %.o:%.cpp
 	g++ -c -fpermissive -g $^ -o $@ ${INC}
 %.o: ../FiUpdateLoader/%.cpp

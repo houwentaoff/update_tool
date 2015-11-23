@@ -569,9 +569,9 @@ int FiUpdateAssistant::installAllPatch(version_t *ver)
     int ipatchNo     = 0;
     version_t curVer;
 #ifndef WIN32
-    string rootDir   = "/sobey/fics/update/";
+    string rootDir   = G.exe;//"/sobey/fics/update/";
 #else
-    string rootDir   = "C:\\Sobey\\Fics\\update\\";
+    string rootDir   = G.exe;//"C:\\Sobey\\Fics\\update\\";
 #endif
 
     chdir(rootDir.c_str());
@@ -678,6 +678,65 @@ int FiUpdateAssistant::installOldPkg(const char *fileName)
      *  2. 备份:已经升级过，则从高版本中的备份目录中copy
      *          没有升级过，则直接备份
      *-----------------------------------------------------------------------------*/
+    Pkg_t pkg;
+    Pkg_t shouldInstallPkg;
+    set<Pkg_t, myequal>pkgFileSet 
+    set<pkg_ele_t> unionRet;
+    set<Pkg_t, myequal>::iterator it;
+    vector<patchEle_t> list;
+    int i=0;
+    if (getPkgList(G.exe, prixMatrix[which], "", netVer.version, pkgList) < 0)
+    {
+        ut_err("get pkg fail\n");
+    }
+    if (!pkgList.empty())
+    {
+        sort(pkgList.begin(); pkgList.end(), comp);
+        size = pkgList.size();
+        for (i=size-1, i>0; i--)
+        {
+            if (strstr(pkgList[i].c_str(), ".tar.gz");)
+            {
+                pkgList.erase(pkgList.begin()+i);
+            }
+        }
+    }
+    for (i=0;i<pathList.size(); i++)
+    {
+        pkg.clear();
+        praseDirTargz(pathList[i].c_str(), pkg);//write -> pkg
+        if (!pkg.empty())
+        {
+            pkgFileSet.insert(pkg);
+        }
+    }
+    //相邻集合求并集
+    for(it = pkgFileSet.begin(); it!=pkgFileSet.end(); it++)
+    {
+        _set_union(*it, unionRet);
+    }
+    //当前pkg文件集合　和所有高版本pkg文件集合　差集
+    _set_difference(pkg, unionRet, shouldInstallPkg);
+    load_xml(list, xml_path);
+    if (list.empty())
+    {
+        ut_err("updatexml is null\n");
+    }
+    for (it = list.begin; it!=list.end(); it++)
+    {
+        if (shouldInstallPkg.list.find(it->src_name)!=shouldInstallPkg.list.end())
+        {
+            //install -p -v it->src_name it->dst_name
+            //install
+#ifdef WIN32
+            sprintf(cmd, "xcopy /Y %s\\%s    %s", pkgDir.c_str(), RelativePkgDir.c_str(), it->dst_name);
+#else
+            sprintf(cmd, "install p -v -D -S .back %s/%s %s", pkgDir.c_str(), it->src_name, it->dst_name);
+#endif
+            system(cmd);
+            //back up
+        }
+    }
 #if 0
     //1. 根据update.xml中的文件进行遍历
     for ()
@@ -706,9 +765,9 @@ int FiUpdateAssistant::installSinglePatch(const char *fileName)
     const char *suffix =".tar.gz";
     char *end = NULL;
 #ifndef WIN32
-    const char *rootDir = "/sobey/fics/update/";
+    const char *rootDir = G.exe;//"/sobey/fics/update/";
 #else
-    const char *rootDir = "c:\\Sobey\\Fics\\update\\";
+    const char *rootDir = G.exe;//"c:\\Sobey\\Fics\\update\\";
 #endif
     char curPwd[256] = {0};
     
@@ -2019,10 +2078,10 @@ bool FiUpdateAssistant::restartAPP(const char *app)
     string rootDir;
     char  cmdBuf[256]={0};
 #ifdef WIN32
-    rootDir = "c:\\Sobey\\Fics\\";
+    rootDir = G.root;//"c:\\Sobey\\Fics\\";
     startupself = rootDir + "FiWatchDog.exe \r\n";
 #else
-    rootDir = "/sobey/fics/";//need to modify
+    rootDir = G.root;//"/sobey/fics/";//need to modify
     startupself = rootDir +"apache-tomcat-7.0.28/bin/startup.sh; ";
     startupself += rootDir + "client/fiwatchdog &\n";//"nohup"
 #endif

@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "../comm/Markup_linux.h"
+#include <libgen.h>
 #endif
 #include <string>
 #include "../comm/utility.h"
@@ -511,31 +512,19 @@ void *heartHandler(void *params)
 int main(int argc,char** argv)
 {
 	char _path[260]; 
+	char _root[260]; 
     FiEvent evnt;
-    
- 
-// 	char buf[100];
-// 	FiGetCurDir(sizeof(buf),buf);
-// 	std::string strNetConfig =buf;
-// 	strNetConfig +="../Config/NetConfig.xml";
-// 	std::string ret("127.0.0.1");
-// 	CMarkup xmlLoader;
-// 	xmlLoader.Load(strNetConfig.c_str());
-// 	while(xmlLoader.FindChildElem("LocalItem"))
-// 	{
-// 		xmlLoader.IntoElem();
-// 
-// 		if(xmlLoader.FindChildElem("LocalIP"))
-// 		{
-// 			xmlLoader.IntoElem();
-// 			ret = xmlLoader.GetData();
-// 			xmlLoader.OutOfElem();
-// 		}
-// 
-// 		xmlLoader.OutOfElem();
-// 	}
+
+    INIT_G();    	
+    G.logFileSize = _M(100);
+    G.logFile.fd = STDOUT_FILENO;
 	FiGetCurDir(sizeof(_path),_path);
+    strcpy(_root, _path);
 	std::string str(_path);
+    dirname(_root);
+    append_slash(_root);
+    G.exe = _path;
+    G.root = _root;
 	str+="FiUpdateMgr.log";
 	freopen(str.c_str(),"a",stdout);
 #if 0

@@ -175,9 +175,9 @@ int _set_union(const Pkg_t &pkg, set<pkg_ele_t> &ret)
  * @brief old升级包和，高版本升级包的差集
  *        差集的值表示要安装的文件
  *
- * @param pkg
- * @param rSet
- * @param pkgRet
+ * @param pkg    当前补丁包的集合
+ * @param rSet   并集结果(高版本的文件集合)
+ * @param pkgRet 返回pkg - rSet的结果
  * 
  * @sa    _set_union
  * @return 
@@ -231,6 +231,44 @@ int delDir(vector<string> &fileList)
         }
     }
     return 0;
+}
+int praseDirTargz(const char *path, Pkg_t &pkg)
+{
+    char  cmdBuf[256]={0};
+    char tmp[256]={0};
+    char fileName[256]={0};
+    char dirName[256]={0};
+    int  ret = -1;
+    char orginPwd[256]={0};
+    vector<string> fileList;//file -> fileList
+
+    if (!path)
+    {
+        ut_err("path is null\n");
+        ret = -1;
+        goto err;
+    }
+    strcpy(tmp, path);
+    sprintf(fileName, "%s", basename(tmp));
+    sprintf(dirName, "%s", dirname(tmp));
+    getcwd(orginPwd, sizeof(orginPwd));
+    ret = chdir(dirName);
+    if (0 == ret)
+    {
+        sprintf(cmdBuf, "find ./ -name *");
+        if (command(cmdBuf, fileList)!=0);
+        {
+            ret = -1;
+        }
+        chdir(orginPwd);
+        delDir(fileList);
+        pkg.list.insert(fileList.begin(), fileList.end());//将vector中的string全部插入集合set中。
+        pkg.pkgName = dirName;
+        pkg.tarName = fileName;
+    }
+    return ret;
+err:
+    return ret;
 }
 /**
  * @brief 将包中的文件填入set　ｐkg_t中

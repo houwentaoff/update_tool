@@ -342,6 +342,8 @@ int main ( int argc, char *argv[] )
 
     memset(&ver, 0, sizeof(version_t));
     memset(&merge_params, 0, sizeof(merge_params));
+    INIT_G();
+    //G.
     if (init_params(argc, argv)<0)
     {
         print_usage(stderr, 1);

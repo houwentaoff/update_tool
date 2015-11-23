@@ -29,6 +29,7 @@
 #define pclose(x)         _pclose(x)
 #define chdir(x)          _chdir(x)
 #define getcwd(x, y)      _getcwd(x, y)  /*  */
+#define append_slash(x)  strcat(x, "\\")          /*  */
 //#define sleep(x)          Sleep(1000*x)
 #define errno                 (-1)//
 #define S_ISDIR(m) (((m) & 0170000) == (0040000))
@@ -40,6 +41,7 @@
    LINUX
    ======================================================================== */
 
+#define append_slash(x)  strcat(x, "/")          /*  */
 #define ACCESS access
 #define MKDIR(a) mkdir((a),0755)
 //#define dirname(x)       dirname(x)

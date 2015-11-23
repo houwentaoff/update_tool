@@ -19,11 +19,15 @@
 #ifndef __INCLUDE_H__
 #define __INCLUDE_H__
 
+#include "debug.h"
+#include "os.h"
+
 #define RPC_PORT               5781 /*  */
 #define RPC_SERVER_NAME        "FiUpdateMgr"
 #define LEN_VERSION            30/*  */
 #define LEN_BUF                 100/*  */
 #define HASH_LEN                200
+#define _M(x)                   (x*(1024*1024))/*  x M bytes*/
 #ifdef WIN32
 #define _PATH_VERSION        "..\\patch_version"
 #define _PATH_CONF           "..\\config\\update_network.xml"
@@ -33,8 +37,12 @@
 #endif
 #define _PATH_PKG_DL         "/sobey/fics/download/"   /*默认路径*/
 
-#include "debug.h"
-#include "os.h"
+#define G (*ptr_to_globals)
+
+#define INIT_G()  do { \
+    ptr_to_globals = (void *)&globals; \
+    memset((void *)&globals, 0, sizeof(globals)); \
+}while (0)
 
 typedef struct 
 {
@@ -53,5 +61,28 @@ typedef enum
     CLIENT,  /*fics 客户端*/ 
     MAS_SRV  /*更新软件包服务机*/   
 }dev_e;
-
+struct globals;
+extern struct globals *ptr_to_globals;
+extern struct globals globals;
+typedef struct logFile_t{
+    const char *path;
+    int fd;
+    unsigned  size;
+    unsigned int isRegular;
+}logFile_t;
+struct globals{
+    /* log */
+    logFile_t logFile;
+    /* max size of file before rotation */ 
+    unsigned logFileSize;
+    /* number of rotated message files */  
+    unsigned logFileRotate;
+    time_t lastLogTime;
+    /* exe path */
+    const char *exe;
+    /*  cwd path */
+    const char *cwd;
+    /* root dir /sobey/fics/ */
+    const char *root;
+};
 #endif

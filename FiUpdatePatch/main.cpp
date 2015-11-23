@@ -495,6 +495,7 @@ int main ( int argc, char *argv[] )
     vector<patchEle_t> list;
 
     memset(&upparams, 0, sizeof(upparams));
+    INIT_G();
 
     if (init_params(argc, argv)<0)
     {

@@ -54,12 +54,16 @@
 #else
 #define TIMEZONE_OFFSET(foo) (8*60*60)
 #endif
+
 using namespace std;
 int use_localtime = 1 ;
 const char month_tab[49] =
     "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec ";
 const char day_tab[] = "Sun,Mon,Tue,Wed,Thu,Fri,Sat,";
 
+
+struct globals globals;
+struct globals *ptr_to_globals;
 
 int getCurLocalIp(std::string& ip)
 {
@@ -1022,7 +1026,59 @@ char *get_commonlog_time(void)
     time_t current_time;
 
     time(&current_time);
-    
+    if (G.logFile.fd >= 0)
+    {
+        if (G.lastLogTime != current_time)
+        {
+            G.lastLogTime = current_time;
+//          close(globals.logFile.fd)
+            goto reopen;
+        }
+    }
+    else
+    {
+reopen:
+        struct stat statf;
+        G.logFile.isRegular = (fstat(G.logFile.fd, &statf) == 0 && S_ISREG(statf.st_mode));
+        G.logFile.size = statf.st_size;
+    }
+    if (G.logFileSize && G.logFile.isRegular && G.logFile.size > G.logFileSize)
+    {
+        if (G.logFileRotate)/*always 0...99 */
+        {
+#if 0
+			int i = strlen(log_file->path) + 3 + 1;
+			char oldFile[i];
+			char newFile[i];
+			i = G.logFileRotate - 1;
+			/* rename: f.8 -> f.9; f.7 -> f.8; ... */
+			while (1) {
+				sprintf(newFile, "%s.%d", log_file->path, i);
+				if (i == 0) break;
+				sprintf(oldFile, "%s.%d", log_file->path, --i);
+				/* ignore errors - file might be missing */
+				rename(oldFile, newFile);
+			}
+			/* newFile == "f.0" now */
+			rename(log_file->path, newFile);
+			/* Incredibly, if F and F.0 are hardlinks, POSIX
+			 * _demands_ that rename returns 0 but does not
+			 * remove F!!!
+			 * (hardlinked F/F.0 pair was observed after
+			 * power failure during rename()).
+			 * Ensure old file is gone:
+			 */
+			unlink(log_file->path);
+#ifdef SYSLOGD_WRLOCK
+			fl.l_type = F_UNLCK;
+			fcntl(log_file->fd, F_SETLKW, &fl);
+#endif
+			close(log_file->fd);
+			goto reopen;
+#endif
+        }
+		ftruncate(G.logFile.fd, 0);
+    }
     if (use_localtime) {
         t = localtime(&current_time);
         time_offset = TIMEZONE_OFFSET(t);

@@ -14,6 +14,7 @@
 // #undef _WIN32_WINNT
 // #define _WIN32_WINNT 0x0501
 #else
+#include <libgen.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
@@ -35,13 +36,14 @@ using namespace std;
 int main(int argc, char **argv)
 {
 	char _path[260];
+	char _root[260];
     version_t netVer;
     version_t localVer;
     int ret = 0;
 
     memset(&netVer, 0, sizeof(version_t));
     memset(&localVer, 0, sizeof(version_t));
-    
+    INIT_G();
 #ifdef WIN32
 	WSADATA wsaData;
 	int iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
@@ -110,8 +112,15 @@ int main(int argc, char **argv)
     FiEnableCoreDumps();
 #endif
 	FiGetCurDir(sizeof(_path),_path);
-
-    if (0 == chdir(_path))       
+    strcpy(_root, _path);
+    dirname(_root);
+    append_slash(_root);
+    G.logFileSize  = _M(100);
+    G.exe = _path;
+    G.root = _root;
+    G.logFile.fd = STDOUT_FILENO;
+    //G.logFile.path = STDOUT;
+    if (0 == chdir(G.exe))       
     {
         ut_dbg("change cur dir success\n");
     }
