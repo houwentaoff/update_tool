@@ -728,7 +728,8 @@ int FiUpdateAssistant::installOldPkg(const char *fileName)
     _set_difference(pkg, unionRet, shouldInstallPkg);
     xml_path = pkgDir;
     xml_path += "update.xml";
-    load_xml(list, xml_path.c_str());
+    bool reboot=false;
+    load_xml(list, xml_path.c_str(), reboot);
     if (list.empty())
     {
         ut_err("updatexml is null\n");
@@ -745,6 +746,7 @@ int FiUpdateAssistant::installOldPkg(const char *fileName)
             sprintf(cmd, "install p -v -D -S .back %s/%s %s", pkgDir.c_str(), itr->src_name, itr->dst_name);
 #endif
             system(cmd);
+            if (reboot)ShutDown=true;
             //back up
         }
     }

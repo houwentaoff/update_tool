@@ -62,7 +62,7 @@ int mergeUpdateXml(vector<patchEle_t> &list, vector<patchEle_t> &ret)
     }
     return 0;
 }
-int load_xml(vector<patchEle_t> &list, const char *xml_name)
+int load_xml(vector<patchEle_t> &list, const char *xml_name, bool &reboot)
 {
     XmlParserEngine xmlParser;
     FiUpdat_Pack_t pack;
@@ -99,11 +99,12 @@ int load_xml(vector<patchEle_t> &list, const char *xml_name)
         tmp.type = EXE;
         list.push_back(tmp);
     }
+    reboot = pack.bReboot;
     return 0;
 err:
     return -1;
 }
-int mk_xml(vector<patchEle_t> &list, const char *xml_name)
+int mk_xml(vector<patchEle_t> &list, const char *xml_name, bool reboot)
 {
     FILE *fp;
     char *p;
@@ -136,6 +137,10 @@ int mk_xml(vector<patchEle_t> &list, const char *xml_name)
                 pele->dst_name);
         fputs(eleBuf, fp);
         fputs("\n", fp);
+    }
+    if (reboot)
+    {
+        fputs("<reboot>1</reboot>\n", fp);
     }
     fputs("</fiupdate>", fp);
     fputs("\n", fp);

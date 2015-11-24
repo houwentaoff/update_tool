@@ -54,9 +54,10 @@ static struct option long_options[] = {
     {"help", 0, NULL, 'h'}, 
     {"verbose", 0, NULL, '%'},
     {"logpath", 1, NULL, '^'},
+    {"reboot", 0, NULL, 'r'},    
     {0, 0, 0, 0}    
 };
-static const char *short_options = "v:d:!:@:#:%^:k:b:f:csmP:hD";
+static const char *short_options = "v:d:!:@:#:%^:k:b:f:csmP:hDr";
 typedef enum{
     TAR_GZ,
     ZIP,
@@ -83,6 +84,7 @@ static struct {
     format_e format;
     bool verbose;
     bool debug;
+    bool reboot;
     char path[256];
     char kernel[32];
     char conf_file[256];
@@ -106,6 +108,7 @@ static void print_usage(FILE *f, int exit_code)
             "\t -P              path of release.        default(./) \n"
             "\t --verbose       verbosely list files processed \n"
             "\t --logpath       path of update log\n"
+            "\t -r              --reboot    reboot\n"            
             "\t -D              debug         \n"
             "\t linux server:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f ../config/ser_linux_update.conf -P /fics_release/fics_v1.1/ -b 64 -k 2.6 --platform linux  -s --verbose\n"
             "\t linux master:%s -v 1.0.0 -d 2015.09.14 --pn 4000 -f  ../config/mas_linux_update.conf -P /fics_release/fics_v1.1/ -b 64 -k 2.6 --platform linux  -m --verbose\n"
@@ -279,6 +282,9 @@ int init_params(int argc, char *params[])
         case 'm'://client/server/mas 
             upparams.ptype = MASSVER_;
             break;
+        case 'r':
+            upparams.reboot = true;
+            break;            
         case '#'://format
             if (strcmp(optarg, "zip") == 0)
             {
@@ -418,11 +424,11 @@ int tar_pkg(vector<patchEle_t> &list)
                 pwd, XML_DEFAULT,tmp_path);
     }
     system(cmd_buf);
-    printf("\nbegin tar pkg.\n");
+    printf("\n---------------begin tar pkg---------------\n");
     sprintf(cmd_buf, "tar -zcvf %s/%s.tar.gz %s",
             pwd, tmp_path, tmp_path);
     system(cmd_buf);
-    printf("tar pkg over.\n");
+    printf("---------------tar pkg over.---------------\n");
     if (!upparams.debug)
     {
         sprintf(cmd_buf, "rm %s -rf", tmp_path);
@@ -509,7 +515,7 @@ int main ( int argc, char *argv[] )
             ut_err("load conf fail\n");
             goto err;
         }
-        if (mk_xml(list, XML_DEFAULT)<0)
+        if (mk_xml(list, XML_DEFAULT, upparams.reboot)<0)
         {
             ut_err("mk xml fail\n");
             goto err;

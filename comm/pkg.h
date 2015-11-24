@@ -126,7 +126,7 @@ int praseTargz(const char *path, Pkg_t &pkg);
  *
  * @return 
  */
-int mk_xml(vector<patchEle_t> &list, const char *xml_name);
+int mk_xml(vector<patchEle_t> &list, const char *xml_name, bool reboot = false);
 /**
  * @brief 加载update.xml中的信息到list中
  *
@@ -136,7 +136,7 @@ int mk_xml(vector<patchEle_t> &list, const char *xml_name);
  * @return 
  * @ 合并补丁包中使用，用于合并update.xml文件
  */
-int load_xml(vector<patchEle_t> &list, const char *xml_name);
+int load_xml(vector<patchEle_t> &list, const char *xml_name, bool &reboot);
 /**
  * @brief 合并list中的内容到ret中
  *

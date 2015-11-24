@@ -770,7 +770,10 @@ bool untargz(const char *src, const char *dst)
     char cmdBuf[512];
     int suffixPos = strlen(".tar.gz");
     int len = 0;
-
+#ifdef WIN32
+    string gzFile;
+    char *p;
+#endif
     if (!src || !dst)
     {
         ut_err("src dst is null\n");
@@ -785,8 +788,8 @@ bool untargz(const char *src, const char *dst)
 #ifdef WIN32
     sprintf(cmdBuf, "\"%s7z.exe\" x \"%s\" -o \"%s\"", G.exe, src, dst);
     system(cmdBuf);
-    string gzFile = src;
-    char *p = strstr(gzFile.c_str(), ".gz");
+    gzFile = src;
+    p = strstr((char *)gzFile.c_str(), ".gz");
     *p = '\0';
     sprintf(cmdBuf, "del %s%s", G.exe, gzFile.c_str());
     system(cmdBuf);

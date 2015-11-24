@@ -451,6 +451,8 @@ int main ( int argc, char *argv[] )
                 printf("---------merge update.xml from tar.gz begin ---------- \n");
                 vector<patchEle_t> list,xmlRet;
                 char xml_path[256]={0};
+                bool greboot=false;
+                bool reboot=false;
                 for(it = pkgFileSet.begin(); it!=pkgFileSet.end(); it++)
                 {
                     list.clear();
@@ -461,10 +463,14 @@ int main ( int argc, char *argv[] )
                         goto err;
                     }
                     sprintf(xml_path, FICS_TMP_PATH"%s/update.xml", dirTmp);
-                    load_xml(list, xml_path);
+                    load_xml(list, xml_path, reboot);
                     mergeUpdateXml(list, xmlRet);
+                    if (reboot)
+                    {
+                        greboot = true;
+                    }
                 }
-                mk_xml(xmlRet, xml_path);
+                mk_xml(xmlRet, xml_path, greboot);
                 printf("---------merge update.xml from tar.gz end ------------ \n");
 #endif
                 //tar -zcvf ./tmp/tarName -> ./tmp/tarName.tar.gz
