@@ -765,6 +765,41 @@ bool unzip(const char* src, const char *dst)
 err:
     return false;
 }
+bool untargz(const char *src, const char *dst)
+{
+    char cmdBuf[512];
+    int suffixPos = strlen(".tar.gz");
+    int len = 0;
+
+    if (!src || !dst)
+    {
+        ut_err("src dst is null\n");
+        goto err;
+    }
+    len = strlen(src);
+    if (strcmp(&src[len-suffixPos], ".tar.gz")!=0)
+    {
+        ut_err("this is not a tar.gz file.\n");
+        goto err;
+    }
+#ifdef WIN32
+    sprintf(cmdBuf, "\"%s7z.exe\" x \"%s\" -o \"%s\"", G.exe, src, dst);
+    system(cmdBuf);
+    string gzFile = src;
+    char *p = strstr(gzFile.c_str(), ".gz");
+    *p = '\0';
+    sprintf(cmdBuf, "del %s%s", G.exe, gzFile.c_str());
+    system(cmdBuf);
+    sprintf(cmdBuf, "\"%s7z.exe\" x \"%s\" -o \"%s\"", G.exe, gzFile.c_str(), dst);
+    system(cmdBuf);
+#else
+    sprintf(cmdBuf, "tar -zxvf %s -C %s", src, dst);
+#endif
+    system(cmdBuf);
+    return true;
+err:
+    return false;
+}
 int getLastVerFromHis(version_t *ver, const char *path)
 {
     FILE *fp = NULL;
@@ -789,7 +824,7 @@ int getLastVerFromHis(version_t *ver, const char *path)
         fgetc(fp);
     }
     ret = pclose(fp);    
-    sscanf(line, "%*s %s %s %d", ver->version, ver->date, ver->patchNo);
+    sscanf(line, "%*s %s %s %s", ver->version, ver->date, ver->patchNo);
     return ret;
 err:
     return ret;

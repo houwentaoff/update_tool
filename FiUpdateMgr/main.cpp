@@ -1,17 +1,18 @@
-#include "../comm/FiRpcSrv.h"
+#include "FiRpcSrv.h"
 #include "FiUpdateMgrImpl.h"
-#include "../comm/utility.h"
-#include "../comm/include.h"
+#include "utility.h"
+#include "include.h"
+#include "patch.h"
 #ifdef WIN32
-#include "../comm/Markup_win32.h"
+#include "Markup_win32.h"
 #else
 #include <sys/time.h>
 #include <sys/resource.h>
-#include "../comm/Markup_linux.h"
+#include "Markup_linux.h"
 #include <libgen.h>
 #endif
 #include <string>
-#include "../comm/utility.h"
+#include "utility.h"
 
 #include <sys/utsname.h>
 #include <getopt.h>

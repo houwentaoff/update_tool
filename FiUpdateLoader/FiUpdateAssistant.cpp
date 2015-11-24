@@ -682,7 +682,10 @@ int FiUpdateAssistant::installOldPkg(const char *fileName)
     char cmd[512]={0};
     int i=0;
     int size=0;
-
+    if (!untargz(fileName, "./"))
+    {
+        ut_err("un tar gz fail.\n");
+    }
     if (pos = strstr((char *)pkgDir.c_str(), ".tar.gz"))
     {
         *pos = '\0';
@@ -701,7 +704,7 @@ int FiUpdateAssistant::installOldPkg(const char *fileName)
             if (strstr(pkgList[i].c_str(), ".tar.gz")||
                 getPatchNumFromName(pkgList[i].c_str()) <= getPatchNumFromName(fileName))// patch num <= cur old pkg
             {
-                pkgList.erase(pkgList.begin()+i);//del all tar.gz, patchnum <= current patch num
+                pkgList.erase(pkgList.begin()+i);//del all tar.gz, when patchnum <= current patch num
             }
         }
     }
