@@ -487,6 +487,7 @@ int sendHello()
     }
 #endif
     int n;
+    int count = 3;
     /*向多播地址发送数据*/
     do
     {
@@ -500,9 +501,9 @@ int sendHello()
         {
             ut_err("sendto() fail errno:%d\n", errno);
         }       
-
+        count--;
         sleep(MCAST_INTERVAL);                           /*等待一段时间*/
-    }while(-1 == n);
+    }while(-1 == n && count > 0);
     close(s);
     
     return 0;
